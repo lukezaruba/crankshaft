@@ -1,0 +1,11 @@
+name: crankshaft-dev
+
+dependencies:
+  - python=3.10
+  - pip
+  - joblib=1.3.2
+  - numpy=1.26.3
+  - scipy=1.12.0
+  - scikit-learn=1.4.0
+  - pip:
+      - pysal==24.1
