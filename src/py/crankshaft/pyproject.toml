@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "crankshaft"
 version = "0.0.1"
 description = "CartoDB Spatial Analysis Python Library"
-url="https://github.com/CartoDB/crankshaft"
 authors = [{ name = "Data Services Team - CartoDB", email = "dataservices@cartodb.com" }]
 license = { file = "LICENSE" }
 requires-python = '3.10'
