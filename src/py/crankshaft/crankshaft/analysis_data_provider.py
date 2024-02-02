@@ -1,13 +1,18 @@
 """class for fetching data"""
+
 import plpy
+
 from . import pysal_utils as pu
 
-NULL_VALUE_ERROR = ('No usable data passed to analysis. Check your input rows '
-                    'for null values and fill in appropriately.')
+NULL_VALUE_ERROR = (
+    "No usable data passed to analysis. Check your input rows "
+    "for null values and fill in appropriately."
+)
 
 
 def verify_data(func):
     """decorator to verify data result before returning to algorithm"""
+
     def wrapper(*args, **kwargs):
         """Error checking"""
         try:
@@ -17,7 +22,7 @@ def verify_data(func):
             else:
                 return data
         except plpy.SPIError as err:
-            plpy.error('Analysis failed: {}'.format(err))
+            plpy.error("Analysis failed: {}".format(err))
 
         return []
 
@@ -26,6 +31,7 @@ def verify_data(func):
 
 class AnalysisDataProvider(object):
     """Data fetching class for pl/python functions"""
+
     @verify_data
     def get_getis(self, w_type, params):  # pylint: disable=no-self-use
         """fetch data for getis ord's g"""
@@ -47,93 +53,105 @@ class AnalysisDataProvider(object):
     @verify_data
     def get_nonspatial_kmeans(self, params):  # pylint: disable=no-self-use
         """
-            Fetch data for non-spatial k-means.
+        Fetch data for non-spatial k-means.
 
-            Inputs - a dict (params) with the following keys:
-                colnames: a (text) list of column names (e.g.,
-                          `['andy', 'cookie']`)
-                id_col: the name of the id column (e.g., `'cartodb_id'`)
-                subquery: the subquery for exposing the data (e.g.,
-                          SELECT * FROM favorite_things)
-            Output:
-                A SQL query for packaging the data for consumption within
-                `KMeans().nonspatial`. Format will be a list of length one,
-                with the first element a dict with keys ('rowid', 'attr1',
-                'attr2', ...)
+        Inputs - a dict (params) with the following keys:
+            colnames: a (text) list of column names (e.g.,
+                    `['andy', 'cookie']`)
+            id_col: the name of the id column (e.g., `'cartodb_id'`)
+            subquery: the subquery for exposing the data (e.g.,
+                      SELECT * FROM favorite_things)
+        Output:
+            A SQL query for packaging the data for consumption within
+            `KMeans().nonspatial`. Format will be a list of length one,
+            with the first element a dict with keys ('rowid', 'attr1',
+            'attr2', ...)
         """
-        agg_cols = ', '.join([
-            'array_agg({0}) As arr_col{1}'.format(val, idx+1)
-            for idx, val in enumerate(params['colnames'])
-        ])
-        query = '''
+        agg_cols = ", ".join(
+            [
+                "array_agg({0}) As arr_col{1}".format(val, idx + 1)
+                for idx, val in enumerate(params["colnames"])
+            ]
+        )
+        query = """
             SELECT {cols}, array_agg({id_col}) As rowid
             FROM ({subquery}) As a
-        '''.format(subquery=params['subquery'],
-                   id_col=params['id_col'],
-                   cols=agg_cols).strip()
+        """.format(
+            subquery=params["subquery"], id_col=params["id_col"], cols=agg_cols
+        ).strip()
         return plpy.execute(query)
 
     @verify_data
     def get_segmentation_model_data(self, params):  # pylint: disable=R0201
         """
-           fetch data for Segmentation
+        fetch data for Segmentation
         params = {"subquery": query,
-                  "target": variable,
-                  "features": feature_columns}
+                "target": variable,
+                "features": feature_columns}
         """
-        columns = ', '.join(['array_agg("{col}") As "{col}"'.format(col=col)
-                             for col in params['features']])
-        query = '''
+        columns = ", ".join(
+            [
+                'array_agg("{col}") As "{col}"'.format(col=col)
+                for col in params["features"]
+            ]
+        )
+        query = """
                 SELECT
-                  array_agg("{target}") As target,
-                  {columns}
+                    array_agg("{target}") As target,
+                    {columns}
                 FROM ({subquery}) As q
-                '''.format(subquery=params['subquery'],
-                           target=params['target'],
-                           columns=columns)
+                """.format(
+            subquery=params["subquery"], target=params["target"], columns=columns
+        )
         return plpy.execute(query)
 
     @verify_data
     def get_segmentation_data(self, params):  # pylint: disable=no-self-use
         """
-            params = {"subquery": target_query,
-                      "id_col": id_col}
+        params = {"subquery": target_query,
+                "id_col": id_col}
         """
-        query = '''
+        query = """
                 SELECT
-                  array_agg("{id_col}" ORDER BY "{id_col}") as "ids"
+                array_agg("{id_col}" ORDER BY "{id_col}") as "ids"
                 FROM ({subquery}) as q
-                 '''.format(**params)
+                """.format(
+            **params
+        )
         return plpy.execute(query)
 
     @verify_data
     def get_segmentation_predict_data(self, params):  # pylint: disable=R0201
         """
-            fetch data for Segmentation
-            params = {"subquery": target_query,
-                      "feature_columns": feature_columns}
+        fetch data for Segmentation
+        params = {"subquery": target_query,
+                "feature_columns": feature_columns}
         """
-        joined_features = ', '.join(['"{}"::numeric'.format(a)
-                                     for a in params['feature_columns']])
-        query = '''
+        joined_features = ", ".join(
+            ['"{}"::numeric'.format(a) for a in params["feature_columns"]]
+        )
+        query = """
                 SELECT
-                  Array[{joined_features}] As features
+                    Array[{joined_features}] As features
                 FROM ({subquery}) as q
-                '''.format(subquery=params['subquery'],
-                           joined_features=joined_features)
+                """.format(
+            subquery=params["subquery"], joined_features=joined_features
+        )
         return plpy.cursor(query)
 
     @verify_data
     def get_spatial_kmeans(self, params):  # pylint: disable=no-self-use
         """fetch data for spatial kmeans"""
-        query = '''
+        query = """
                 SELECT
-                  array_agg("{id_col}" ORDER BY "{id_col}") as ids,
-                  array_agg(ST_X("{geom_col}") ORDER BY "{id_col}") As xs,
-                  array_agg(ST_Y("{geom_col}") ORDER BY "{id_col}") As ys
+                    array_agg("{id_col}" ORDER BY "{id_col}") as ids,
+                    array_agg(ST_X("{geom_col}") ORDER BY "{id_col}") As xs,
+                    array_agg(ST_Y("{geom_col}") ORDER BY "{id_col}") As ys
                 FROM ({subquery}) As a
                 WHERE "{geom_col}" IS NOT NULL
-                '''.format(**params)
+                """.format(
+            **params
+        )
         return plpy.execute(query)
 
     @verify_data

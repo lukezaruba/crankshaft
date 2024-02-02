@@ -1,4 +1,5 @@
 """Import all functions from for clustering"""
-from .moran import *
-from .kmeans import *
+
 from .getis import *
+from .kmeans import *
+from .moran import *

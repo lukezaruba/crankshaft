@@ -7,13 +7,11 @@ access functions <https://www.postgresql.org/docs/10/static/plpython.html>`__).
 """
 
 from collections import OrderedDict
-import pysal as ps
 
-# crankshaft module
 import crankshaft.pysal_utils as pu
+import esda
 from crankshaft.analysis_data_provider import AnalysisDataProvider
-
-# High level interface ---------------------------------------
+import libpysal
 
 
 class Moran(object):
@@ -24,18 +22,20 @@ class Moran(object):
       data_provider (:obj:`AnalysisDataProvider`): Class for fetching data. See
         the `crankshaft.analysis_data_provider` module for more information.
     """
+
     def __init__(self, data_provider=None):
         if data_provider is None:
             self.data_provider = AnalysisDataProvider()
         else:
             self.data_provider = data_provider
 
-    def global_stat(self, subquery, attr_name,
-                    w_type, num_ngbrs, permutations, geom_col, id_col):
+    def global_stat(
+        self, subquery, attr_name, w_type, num_ngbrs, permutations, geom_col, id_col
+    ):
         """
         Moran's I (global)
         Implementation building neighbors with a PostGIS database and Moran's I
-         core clusters with PySAL.
+        core clusters with PySAL.
 
         Args:
 
@@ -57,11 +57,15 @@ class Moran(object):
           id_col (str): Row index for each value. Usually the database index.
 
         """
-        params = OrderedDict([("id_col", id_col),
-                              ("attr1", attr_name),
-                              ("geom_col", geom_col),
-                              ("subquery", subquery),
-                              ("num_ngbrs", num_ngbrs)])
+        params = OrderedDict(
+            [
+                ("id_col", id_col),
+                ("attr1", attr_name),
+                ("geom_col", geom_col),
+                ("subquery", subquery),
+                ("num_ngbrs", num_ngbrs),
+            ]
+        )
 
         result = self.data_provider.get_moran(w_type, params)
 
@@ -72,13 +76,13 @@ class Moran(object):
         weight = pu.get_weight(result, w_type, num_ngbrs)
 
         # calculate moran global
-        moran_global = ps.esda.moran.Moran(attr_vals, weight,
-                                           permutations=permutations)
+        moran_global = esda.moran.Moran(attr_vals, weight, permutations=permutations)
 
         return list(zip([moran_global.I], [moran_global.EI]))
 
-    def local_stat(self, subquery, attr,
-                   w_type, num_ngbrs, permutations, geom_col, id_col):
+    def local_stat(
+        self, subquery, attr, w_type, num_ngbrs, permutations, geom_col, id_col
+    ):
         """
         Moran's I (local)
 
@@ -117,11 +121,15 @@ class Moran(object):
         # geometries with attributes that are null are ignored
         # resulting in a collection of not as near neighbors
 
-        params = OrderedDict([("id_col", id_col),
-                              ("attr1", attr),
-                              ("geom_col", geom_col),
-                              ("subquery", subquery),
-                              ("num_ngbrs", num_ngbrs)])
+        params = OrderedDict(
+            [
+                ("id_col", id_col),
+                ("attr1", attr),
+                ("geom_col", geom_col),
+                ("subquery", subquery),
+                ("num_ngbrs", num_ngbrs),
+            ]
+        )
 
         result = self.data_provider.get_moran(w_type, params)
 
@@ -129,29 +137,39 @@ class Moran(object):
         weight = pu.get_weight(result, w_type, num_ngbrs)
 
         # calculate LISA values
-        lisa = ps.esda.moran.Moran_Local(attr_vals, weight,
-                                         permutations=permutations)
+        lisa = esda.moran.Moran_Local(attr_vals, weight, permutations=permutations)
 
         # find quadrants for each geometry
         quads = quad_position(lisa.q)
 
         # calculate spatial lag
-        lag = ps.weights.spatial_lag.lag_spatial(weight, lisa.y)
-        lag_std = ps.weights.spatial_lag.lag_spatial(weight, lisa.z)
+        lag = libpysal.weights.lag_spatial(weight, lisa.y)
+        lag_std = libpysal.weights.lag_spatial(weight, lisa.z)
 
-        return list(zip(
-            quads,
-            lisa.p_sim,
-            lag,
-            lag_std,
-            lisa.y,
-            lisa.z,
-            lisa.Is,
-            weight.id_order
-        ))
+        return list(
+            zip(
+                quads,
+                lisa.p_sim,
+                lag,
+                lag_std,
+                lisa.y,
+                lisa.z,
+                lisa.Is,
+                weight.id_order,
+            )
+        )
 
-    def global_rate_stat(self, subquery, numerator, denominator,
-                         w_type, num_ngbrs, permutations, geom_col, id_col):
+    def global_rate_stat(
+        self,
+        subquery,
+        numerator,
+        denominator,
+        w_type,
+        num_ngbrs,
+        permutations,
+        geom_col,
+        id_col,
+    ):
         """
         Moran's I Rate (global)
 
@@ -175,12 +193,16 @@ class Moran(object):
             finding the spatial neighborhoods.
           id_col (str): Row index for each value. Usually the database index.
         """
-        params = OrderedDict([("id_col", id_col),
-                              ("attr1", numerator),
-                              ("attr2", denominator),
-                              ("geom_col", geom_col),
-                              ("subquery", subquery),
-                              ("num_ngbrs", num_ngbrs)])
+        params = OrderedDict(
+            [
+                ("id_col", id_col),
+                ("attr1", numerator),
+                ("attr2", denominator),
+                ("geom_col", geom_col),
+                ("subquery", subquery),
+                ("num_ngbrs", num_ngbrs),
+            ]
+        )
 
         result = self.data_provider.get_moran(w_type, params)
 
@@ -191,13 +213,23 @@ class Moran(object):
         weight = pu.get_weight(result, w_type, num_ngbrs)
 
         # calculate moran global rate
-        lisa_rate = ps.esda.moran.Moran_Rate(numer, denom, weight,
-                                             permutations=permutations)
+        lisa_rate = esda.moran.Moran_Rate(
+            numer, denom, weight, permutations=permutations
+        )
 
         return list(zip([lisa_rate.I], [lisa_rate.EI]))
 
-    def local_rate_stat(self, subquery, numerator, denominator,
-                        w_type, num_ngbrs, permutations, geom_col, id_col):
+    def local_rate_stat(
+        self,
+        subquery,
+        numerator,
+        denominator,
+        w_type,
+        num_ngbrs,
+        permutations,
+        geom_col,
+        id_col,
+    ):
         """
         Moran's I Local Rate
 
@@ -236,12 +268,16 @@ class Moran(object):
         # geometries with values that are null are ignored
         # resulting in a collection of not as near neighbors
 
-        params = OrderedDict([("id_col", id_col),
-                              ("numerator", numerator),
-                              ("denominator", denominator),
-                              ("geom_col", geom_col),
-                              ("subquery", subquery),
-                              ("num_ngbrs", num_ngbrs)])
+        params = OrderedDict(
+            [
+                ("id_col", id_col),
+                ("numerator", numerator),
+                ("denominator", denominator),
+                ("geom_col", geom_col),
+                ("subquery", subquery),
+                ("num_ngbrs", num_ngbrs),
+            ]
+        )
 
         result = self.data_provider.get_moran(w_type, params)
 
@@ -252,40 +288,47 @@ class Moran(object):
         weight = pu.get_weight(result, w_type, num_ngbrs)
 
         # calculate LISA values
-        lisa = ps.esda.moran.Moran_Local_Rate(numer, denom, weight,
-                                              permutations=permutations)
+        lisa = esda.moran.Moran_Local_Rate(
+            numer, denom, weight, permutations=permutations
+        )
 
         # find quadrants for each geometry
         quads = quad_position(lisa.q)
 
         # spatial lag
-        lag = ps.weights.spatial_lag.lag_spatial(weight, lisa.y)
-        lag_std = ps.weights.spatial_lag.lag_spatial(weight, lisa.z)
+        lag = libpysal.weights.lag_spatial(weight, lisa.y)
+        lag_std = libpysal.weights.lag_spatial(weight, lisa.z)
 
-        return list(zip(
-            quads,
-            lisa.p_sim,
-            lag,
-            lag_std,
-            lisa.y,
-            lisa.z,
-            lisa.Is,
-            weight.id_order
-        ))
+        return list(
+            zip(
+                quads,
+                lisa.p_sim,
+                lag,
+                lag_std,
+                lisa.y,
+                lisa.z,
+                lisa.Is,
+                weight.id_order,
+            )
+        )
 
-    def local_bivariate_stat(self, subquery, attr1, attr2,
-                             permutations, geom_col, id_col,
-                             w_type, num_ngbrs):
+    def local_bivariate_stat(
+        self, subquery, attr1, attr2, permutations, geom_col, id_col, w_type, num_ngbrs
+    ):
         """
-            Moran's I (local) Bivariate (untested)
+        Moran's I (local) Bivariate (untested)
         """
 
-        params = OrderedDict([("id_col", id_col),
-                              ("attr1", attr1),
-                              ("attr2", attr2),
-                              ("geom_col", geom_col),
-                              ("subquery", subquery),
-                              ("num_ngbrs", num_ngbrs)])
+        params = OrderedDict(
+            [
+                ("id_col", id_col),
+                ("attr1", attr1),
+                ("attr2", attr2),
+                ("geom_col", geom_col),
+                ("subquery", subquery),
+                ("num_ngbrs", num_ngbrs),
+            ]
+        )
 
         result = self.data_provider.get_moran(w_type, params)
 
@@ -297,15 +340,14 @@ class Moran(object):
         weight = pu.get_weight(result, w_type, num_ngbrs)
 
         # calculate LISA values
-        lisa = ps.esda.moran.Moran_Local_BV(attr1_vals, attr2_vals, weight,
-                                            permutations=permutations)
+        lisa = esda.moran.Moran_Local_BV(
+            attr1_vals, attr2_vals, weight, permutations=permutations
+        )
 
         # find clustering of significance
         lisa_sig = quad_position(lisa.q)
 
         return list(zip(lisa.Is, lisa_sig, lisa.p_sim, weight.id_order))
-
-# Low level functions ----------------------------------------
 
 
 def map_quads(coord):
@@ -318,13 +360,13 @@ def map_quads(coord):
       classification (one of 'HH', 'LH', 'LL', or 'HL')
     """
     if coord == 1:
-        return 'HH'
+        return "HH"
     elif coord == 2:
-        return 'LH'
+        return "LH"
     elif coord == 3:
-        return 'LL'
+        return "LL"
     elif coord == 4:
-        return 'HL'
+        return "HL"
     return None
 
 
