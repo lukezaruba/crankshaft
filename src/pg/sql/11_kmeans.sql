@@ -1,6 +1,6 @@
 -- Spatial k-means clustering
 
-CREATE OR REPLACE FUNCTION CDB_KMeans(
+CREATE OR REPLACE FUNCTION crankshaft.CDB_KMeans(
   query TEXT,
   no_clusters INTEGER,
   no_init INTEGER DEFAULT 20
@@ -9,7 +9,8 @@ RETURNS TABLE(
   cartodb_id INTEGER,
   cluster_no INTEGER
 ) AS $$
-
+from sys import path
+path.append('@ENV')
 from crankshaft.clustering import Kmeans
 kmeans = Kmeans()
 return kmeans.spatial(query, no_clusters, no_init)
@@ -24,7 +25,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 --              deviation of 1
 -- id_colname: name of the id column
 
-CREATE OR REPLACE FUNCTION CDB_KMeansNonspatial(
+CREATE OR REPLACE FUNCTION crankshaft.CDB_KMeansNonspatial(
   query TEXT,
   colnames TEXT[],
   no_clusters INTEGER,
@@ -38,16 +39,17 @@ RETURNS TABLE(
   inertia numeric,
   rowid bigint
 ) AS $$
-
+from sys import path
+path.append('@ENV')
 from crankshaft.clustering import Kmeans
 kmeans = Kmeans()
 return kmeans.nonspatial(query, colnames, no_clusters,
-                         standardize=standardize,
-                         id_col=id_col)
+                        standardize=standardize,
+                        id_col=id_col)
 $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 
-CREATE OR REPLACE FUNCTION CDB_WeightedMeanS(
+CREATE OR REPLACE FUNCTION crankshaft.CDB_WeightedMeanS(
   state NUMERIC[],
   the_geom GEOMETRY(Point, 4326),
   weight NUMERIC
@@ -73,7 +75,7 @@ END
 $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
 
-CREATE OR REPLACE FUNCTION CDB_WeightedMeanF(state NUMERIC[])
+CREATE OR REPLACE FUNCTION crankshaft.CDB_WeightedMeanF(state NUMERIC[])
 RETURNS GEOMETRY AS
 $$
 BEGIN
@@ -88,9 +90,9 @@ $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
 -- Create aggregate if it did not exist
 DO $$ BEGIN
-    CREATE AGGREGATE CDB_WeightedMean(geometry(Point, 4326), NUMERIC) (
-        SFUNC = CDB_WeightedMeanS,
-        FINALFUNC = CDB_WeightedMeanF,
+    CREATE AGGREGATE crankshaft.CDB_WeightedMean(geometry(Point, 4326), NUMERIC) (
+        SFUNC = crankshaft.CDB_WeightedMeanS,
+        FINALFUNC = crankshaft.CDB_WeightedMeanF,
         STYPE = Numeric[],
         PARALLEL = SAFE,
         INITCOND = "{0.0,0.0,0.0}"
@@ -98,3 +100,8 @@ DO $$ BEGIN
 EXCEPTION
     WHEN duplicate_function THEN NULL;
 END $$;
+
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+

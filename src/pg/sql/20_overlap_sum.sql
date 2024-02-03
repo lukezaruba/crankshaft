@@ -14,7 +14,7 @@
 -- Return value:
 --   Aereal-weighted interpolation of the column values over the geometry
 CREATE OR REPLACE
-FUNCTION cdb_overlap_sum(geom geometry, target_table_name text, target_column text, schema_name text DEFAULT NULL)
+FUNCTION crankshaft.cdb_overlap_sum(geom geometry, target_table_name text, target_column text, schema_name text DEFAULT NULL)
   RETURNS numeric AS
 $$
 DECLARE
@@ -36,3 +36,7 @@ BEGIN
   RETURN result;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
