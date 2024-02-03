@@ -10,8 +10,8 @@ from collections import OrderedDict
 
 import crankshaft.pysal_utils as pu
 import esda
-from crankshaft.analysis_data_provider import AnalysisDataProvider
 import libpysal
+from crankshaft.analysis_data_provider import AnalysisDataProvider
 
 
 class Moran(object):

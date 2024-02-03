@@ -265,4 +265,4 @@ def get_attributes(query_res, attr_num=1):
     @param query_res: query results with attributes and neighbors
     @param attr_num: attribute number (1, 2, ...)
     """
-    return np.array([x["attr" + str(attr_num)] for x in query_res], dtype=np.float)
+    return np.array([x["attr" + str(attr_num)] for x in query_res], dtype=np.float64)
