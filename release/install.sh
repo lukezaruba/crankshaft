@@ -2,9 +2,6 @@
 
 wd=$(pwd)
 
-# Get config JSON
-config=$1;
-
 # Read in config data
 pgPython=$(sed "2q;d" config.json | sed 's/"pgPython": "//g' | sed 's/",//g' | sed 's/ //g')
 envName=$(sed "3q;d" config.json | sed 's/"envName": "//g' | sed 's/",//g' | sed 's/ //g')
@@ -22,14 +19,14 @@ cd $envName
 
 source bin/activate
 
-sudo pip install "git+https://github.com/lukezaruba/crankshaft.git@dev#subdirectory=src/py/crankshaft"
+sudo pip install "git+https://github.com/lukezaruba/crankshaft.git#subdirectory=src/py/crankshaft"
 
 deactivate
 
 cd $wd
 
 # Install Functions with psql
-curl -o CRANKSHAFT.sql https://raw.githubusercontent.com/lukezaruba/crankshaft/dev/release/crankshaft--0.10.0.sql
+curl -o CRANKSHAFT.sql https://raw.githubusercontent.com/lukezaruba/crankshaft/main/release/crankshaft--0.10.0.sql
 
 psql -U $sqlUser -d $sqlDB -f CRANKSHAFT.sql
 

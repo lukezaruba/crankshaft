@@ -2,9 +2,6 @@
 
 wd=$(pwd)
 
-# Get config JSON
-config=$1;
-
 # Read in config data
 pgPython=$(sed "2q;d" release/config.json | sed 's/"pgPython": "//g' | sed 's/",//g' | sed 's/ //g')
 envName=$(sed "3q;d" release/config.json | sed 's/"envName": "//g' | sed 's/",//g' | sed 's/ //g')
@@ -32,7 +29,7 @@ cd $envName
 
 source bin/activate
 
-sudo pip install "git+https://github.com/lukezaruba/crankshaft.git@dev#subdirectory=src/py/crankshaft"
+sudo pip install "git+https://github.com/lukezaruba/crankshaft.git#subdirectory=src/py/crankshaft"
 
 deactivate
 

@@ -2,7 +2,6 @@
 
 wd=$(pwd)
 
-
 # Combining SQL functions to single file
 touch release/crankshaft--0.10.0.sql
 cd src/pg/sql

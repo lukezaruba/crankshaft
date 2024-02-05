@@ -38,7 +38,7 @@ BEGIN
         -- append the value
         coltemp := array_append(coltemp, centerval);
     END LOOP;
-    RETURN QUERY SELECT unnest(gs) as geomout, unnest(coltemp ) as colout;
+    RETURN QUERY SELECT unnest(gs) as geomout, unnest(coltemp) as colout;
 END;
 $$ language plpgsql IMMUTABLE PARALLEL SAFE;
 
