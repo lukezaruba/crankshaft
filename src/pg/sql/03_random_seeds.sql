@@ -2,7 +2,7 @@
 -- Set the seeds of the RNGs (Random Number Generators)
 -- used internally.
 CREATE OR REPLACE FUNCTION
-crankshaft._cdb_random_seeds (seed_value INTEGER) RETURNS VOID
+crankshaft._random_seeds (seed_value INTEGER) RETURNS VOID
 AS $$
   from sys import path
   path.append('@ENV')

@@ -4,7 +4,7 @@
 -- 3: krigin ---> TO DO
 
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_SpatialInterpolation(
+CREATE OR REPLACE FUNCTION crankshaft.SpatialInterpolation(
     IN query text,
     IN point geometry,
     IN method integer DEFAULT 1,
@@ -19,14 +19,14 @@ DECLARE
     output numeric;
 BEGIN
     EXECUTE 'WITH a AS('||query||') SELECT array_agg(the_geom), array_agg(attrib) FROM a' INTO gs, vs;
-    SELECT crankshaft.CDB_SpatialInterpolation(gs, vs, point, method, p1,p2) INTO output FROM a;
+    SELECT crankshaft.SpatialInterpolation(gs, vs, point, method, p1,p2) INTO output FROM a;
 
     RETURN output;
 END;
 $$
 language plpgsql VOLATILE PARALLEL UNSAFE;
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_SpatialInterpolation(
+CREATE OR REPLACE FUNCTION crankshaft.SpatialInterpolation(
     IN geomin geometry[],
     IN colin numeric[],
     IN point geometry,

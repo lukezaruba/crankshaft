@@ -1,9 +1,9 @@
 -- =============================================================================================
 --
--- CDB_Voronoi
+-- Voronoi
 --
 -- =============================================================================================
-CREATE OR REPLACE FUNCTION crankshaft.CDB_voronoi(
+CREATE OR REPLACE FUNCTION crankshaft.Voronoi(
     IN geomin geometry[],
     IN buffer numeric DEFAULT 0.5,
     IN tolerance numeric DEFAULT 1e-9

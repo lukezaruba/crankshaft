@@ -10,7 +10,7 @@
 -- misses per point the funciton accepts before giving up.
 --
 -- Returns: Multipoint with the requested points
-CREATE OR REPLACE FUNCTION crankshaft.cdb_dot_density(geom geometry , no_points Integer, max_iter_per_point Integer DEFAULT 1000)
+CREATE OR REPLACE FUNCTION crankshaft.DotDensity(geom geometry , no_points Integer, max_iter_per_point Integer DEFAULT 1000)
 RETURNS GEOMETRY AS $$
 DECLARE
   extent GEOMETRY;

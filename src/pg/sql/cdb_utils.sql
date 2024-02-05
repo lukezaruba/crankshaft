@@ -16,7 +16,7 @@
 --               as the extent.
 --
 --
-CREATE OR REPLACE FUNCTION crankshaft.CDB_RectangleGrid(ext GEOMETRY, width FLOAT8, height FLOAT8, origin GEOMETRY DEFAULT NULL)
+CREATE OR REPLACE FUNCTION crankshaft.RectangleGrid(ext GEOMETRY, width FLOAT8, height FLOAT8, origin GEOMETRY DEFAULT NULL)
 RETURNS SETOF GEOMETRY
 AS $$
 DECLARE
@@ -108,7 +108,7 @@ $$ LANGUAGE 'plpgsql' IMMUTABLE PARALLEL SAFE;
 --
 --
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_EqualIntervalBins ( in_array NUMERIC[], breaks INT ) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION crankshaft.EqualIntervalBins ( in_array NUMERIC[], breaks INT ) RETURNS NUMERIC[] as $$
 DECLARE
     diff numeric;
     min_val numeric;
@@ -143,7 +143,7 @@ $$ language plpgsql IMMUTABLE PARALLEL SAFE;
 --
 --
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_HeadsTailsBins ( in_array NUMERIC[], breaks INT) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION crankshaft.HeadsTailsBins ( in_array NUMERIC[], breaks INT) RETURNS NUMERIC[] as $$
 DECLARE
     element_count INT4;
     arr_mean numeric;
@@ -196,7 +196,7 @@ $$ language plpgsql IMMUTABLE PARALLEL SAFE;
 --
 
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_JenksBins ( in_array NUMERIC[], breaks INT, iterations INT DEFAULT 5, invert BOOLEAN DEFAULT FALSE) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION crankshaft.JenksBins ( in_array NUMERIC[], breaks INT, iterations INT DEFAULT 5, invert BOOLEAN DEFAULT FALSE) RETURNS NUMERIC[] as $$
 DECLARE
     element_count INT4;
     arr_mean NUMERIC;
@@ -229,7 +229,7 @@ BEGIN
     SELECT avg(v) INTO arr_mean FROM (  SELECT unnest(in_array) as v ) x;
 
     -- assume best is actually Quantile
-    SELECT crankshaft.CDB_QuantileBins(in_array, breaks) INTO quant;
+    SELECT crankshaft.QuantileBins(in_array, breaks) INTO quant;
 
     -- if data is very very large, just return quant and be done
     IF element_count > 5000000 THEN
@@ -258,7 +258,7 @@ BEGIN
         i = i+1;
     END LOOP;
 
-    best_result = crankshaft.CDB_JenksBinsIteration( in_array, breaks, classes, invert, element_count, arr_mean, shuffles);
+    best_result = crankshaft.JenksBinsIteration( in_array, breaks, classes, invert, element_count, arr_mean, shuffles);
 
     --set the seed so we can ensure the same results
     SELECT setseed(0.4567) INTO seedtarget;
@@ -288,7 +288,7 @@ BEGIN
             END IF;
             i := i+1;
         END LOOP;
-        curr_result = crankshaft.CDB_JenksBinsIteration( in_array, breaks, classes, invert, element_count, arr_mean, shuffles);
+        curr_result = crankshaft.JenksBinsIteration( in_array, breaks, classes, invert, element_count, arr_mean, shuffles);
 
         IF curr_result[1] > best_result[1] THEN
             best_result = curr_result;
@@ -307,7 +307,7 @@ $$ language plpgsql VOLATILE PARALLEL RESTRICTED;
 -- Perform a single iteration of the Jenks classification
 --
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_JenksBinsIteration ( in_array NUMERIC[], breaks INT, classes INT[][], invert BOOLEAN, element_count INT4, arr_mean NUMERIC, max_search INT DEFAULT 50) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION crankshaft.JenksBinsIteration ( in_array NUMERIC[], breaks INT, classes INT[][], invert BOOLEAN, element_count INT4, arr_mean NUMERIC, max_search INT DEFAULT 50) RETURNS NUMERIC[] as $$
 DECLARE
     tmp_val numeric;
     new_classes int[][];
@@ -411,7 +411,7 @@ $$ language plpgsql IMMUTABLE PARALLEL SAFE;
 -- @param breaks The number of bins you want to find.
 --
 --
-CREATE OR REPLACE FUNCTION crankshaft.CDB_QuantileBins ( in_array NUMERIC[], breaks INT) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION crankshaft.QuantileBins ( in_array NUMERIC[], breaks INT) RETURNS NUMERIC[] as $$
 DECLARE
     element_count INT4;
     break_size numeric;

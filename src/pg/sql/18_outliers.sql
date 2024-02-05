@@ -1,7 +1,7 @@
 
 -- Find outliers using a static threshold
 --
-CREATE OR REPLACE FUNCTION crankshaft.CDB_StaticOutlier(column_value numeric, threshold numeric)
+CREATE OR REPLACE FUNCTION crankshaft.StaticOutlier(column_value numeric, threshold numeric)
 RETURNS boolean
 AS $$
 BEGIN
@@ -14,7 +14,7 @@ $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE ;
 -- Find outliers by a percentage above the threshold
 -- TODO: add symmetric option? `is_symmetric boolean DEFAULT false`
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_PercentOutlier(column_values numeric[], outlier_fraction numeric, ids int[])
+CREATE OR REPLACE FUNCTION crankshaft.PercentOutlier(column_values numeric[], outlier_fraction numeric, ids int[])
 RETURNS TABLE(is_outlier boolean, rowid int)
 AS $$
 DECLARE
@@ -42,7 +42,7 @@ $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
 -- Find outliers above a given number of standard deviations from the mean
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_StdDevOutlier(column_values numeric[], num_deviations numeric, ids int[], is_symmetric boolean DEFAULT true)
+CREATE OR REPLACE FUNCTION crankshaft.StdDevOutlier(column_values numeric[], num_deviations numeric, ids int[], is_symmetric boolean DEFAULT true)
 RETURNS TABLE(is_outlier boolean, rowid int)
 AS $$
 DECLARE

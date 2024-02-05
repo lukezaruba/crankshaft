@@ -18,10 +18,10 @@ $$ language 'sql' STABLE STRICT PARALLEL SAFE;
 -- Set the seeds of the RNGs (Random Number Generators)
 -- used internally.
 CREATE OR REPLACE FUNCTION
-crankshaft._cdb_random_seeds (seed_value INTEGER) RETURNS VOID
+crankshaft._random_seeds (seed_value INTEGER) RETURNS VOID
 AS $$
   from sys import path
-  path.append('/Library/edb/languagepack/v3/Python-3.10/crankshaft_env/lib/python3.10/site-packages')
+  path.append('')
   from crankshaft import random_seeds
   random_seeds.set_random_seeds(seed_value)
 $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
@@ -30,7 +30,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 -------------------------------------------------
 -------------------------------------------------
 CREATE OR REPLACE FUNCTION
-    crankshaft.CDB_PyAggS(current_state Numeric[], current_row Numeric[]) 
+    crankshaft.PyAggS(current_state Numeric[], current_row Numeric[])
     returns NUMERIC[] as $$
     BEGIN
         if array_upper(current_state,1) is null  then
@@ -43,8 +43,8 @@ CREATE OR REPLACE FUNCTION
 
 -- Create aggregate if it did not exist
 DO $$ BEGIN
-    CREATE AGGREGATE crankshaft.CDB_PyAgg(NUMERIC[]) (
-        SFUNC = crankshaft.CDB_PyAggS,
+    CREATE AGGREGATE crankshaft.PyAgg(NUMERIC[]) (
+        SFUNC = crankshaft.PyAggS,
         STYPE = Numeric[],
         PARALLEL = SAFE,
         INITCOND = "{}"
@@ -56,7 +56,109 @@ END $$;
 -------------------------------------------------
 -------------------------------------------------
 -------------------------------------------------
-CREATE OR REPLACE FUNCTION crankshaft.CDB_Gravity(
+
+CREATE OR REPLACE FUNCTION
+    CreateAndPredictSegment(
+        target NUMERIC[],
+        features NUMERIC[],
+        target_features NUMERIC[],
+        target_ids NUMERIC[],
+        n_estimators INTEGER DEFAULT 1200,
+        max_depth INTEGER DEFAULT 3,
+        subsample DOUBLE PRECISION DEFAULT 0.5,
+        learning_rate DOUBLE PRECISION DEFAULT 0.01,
+        min_samples_leaf INTEGER DEFAULT 1)
+RETURNS TABLE(cartodb_id NUMERIC, prediction NUMERIC, accuracy NUMERIC)
+AS $$
+    import numpy as np
+    import plpy
+
+    from crankshaft.segmentation import Segmentation
+    seg = Segmentation()
+    model_params = {'n_estimators': n_estimators,
+                    'max_depth': max_depth,
+                    'subsample': subsample,
+                    'learning_rate': learning_rate,
+                    'min_samples_leaf': min_samples_leaf}
+
+    def unpack2D(data):
+        dimension = data.pop(0)
+        a = np.array(data, dtype=np.float64)
+        return a.reshape(int(len(a)/dimension), int(dimension))
+
+    return seg.create_and_predict_segment_agg(
+        np.array(target, dtype=np.float64),
+        unpack2D(features),
+        unpack2D(target_features),
+        target_ids,
+        model_params)
+
+$$ LANGUAGE plpython3u VOLATILE PARALLEL RESTRICTED;
+
+CREATE OR REPLACE FUNCTION
+    CreateAndPredictSegment(
+        query TEXT,
+        variable_name TEXT,
+        target_table TEXT,
+        n_estimators INTEGER DEFAULT 1200,
+        max_depth INTEGER DEFAULT 3,
+        subsample DOUBLE PRECISION DEFAULT 0.5,
+        learning_rate DOUBLE PRECISION DEFAULT 0.01,
+        min_samples_leaf INTEGER DEFAULT 1)
+RETURNS TABLE (cartodb_id TEXT, prediction NUMERIC, accuracy NUMERIC)
+AS $$
+    from crankshaft.segmentation import Segmentation
+    seg = Segmentation()
+    model_params = {
+        'n_estimators': n_estimators,
+        'max_depth': max_depth,
+        'subsample': subsample,
+        'learning_rate': learning_rate,
+        'min_samples_leaf': min_samples_leaf
+    }
+    feature_cols = set(plpy.execute('''
+        select * from ({query}) as _w limit 0
+    '''.format(query=query)).colnames()) -  set([variable_name, 'cartodb_id', ])
+    return seg.create_and_predict_segment(
+        query,
+        variable_name,
+        feature_cols,
+        target_table,
+        model_params
+    )
+$$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
+
+CREATE OR REPLACE FUNCTION
+    CreateAndPredictSegment(
+        query TEXT,
+        variable TEXT,
+        feature_columns TEXT[],
+        target_query TEXT,
+        n_estimators INTEGER DEFAULT 1200,
+        max_depth INTEGER DEFAULT 3,
+        subsample DOUBLE PRECISION DEFAULT 0.5,
+        learning_rate DOUBLE PRECISION DEFAULT 0.01,
+        min_samples_leaf INTEGER DEFAULT 1)
+RETURNS TABLE (cartodb_id TEXT, prediction NUMERIC, accuracy NUMERIC)
+AS $$
+    from crankshaft.segmentation import Segmentation
+    seg = Segmentation()
+    model_params = {
+        'n_estimators': n_estimators,
+        'max_depth': max_depth,
+        'subsample': subsample,
+        'learning_rate': learning_rate,
+        'min_samples_leaf': min_samples_leaf
+    }
+    return seg.create_and_predict_segment(
+        query,
+        variable,
+        feature_columns,
+        target_query,
+        model_params
+    )
+$$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
+CREATE OR REPLACE FUNCTION crankshaft.Gravity(
     IN target_query text,
     IN weight_column text,
     IN source_query text,
@@ -83,11 +185,11 @@ BEGIN
     EXECUTE 'WITH foo as('+target_query+') SELECT array_agg(cartodb_id), array_agg(the_geom), array_agg(' || weight_column || ') FROM foo' INTO t_id, t_geom, t_weight;
     EXECUTE 'WITH foo as('+source_query+') SELECT array_agg(cartodb_id), array_agg(the_geom), array_agg(' || pop_column || ') FROM foo' INTO s_id, s_geom, s_pop;
     RETURN QUERY
-    SELECT g.* FROM t, s, crankshaft.CDB_Gravity(t_id, t_geom, t_weight, s_id, s_geom, s_pop, target, radius, minval) g;
+    SELECT g.* FROM t, s, crankshaft.Gravity(t_id, t_geom, t_weight, s_id, s_geom, s_pop, target, radius, minval) g;
 END;
 $$ language plpgsql VOLATILE PARALLEL UNSAFE;
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_Gravity(
+CREATE OR REPLACE FUNCTION crankshaft.Gravity(
     IN t_id bigint[],
     IN t_geom geometry[],
     IN t_weight numeric[],
@@ -181,7 +283,7 @@ $$ language plpgsql IMMUTABLE PARALLEL SAFE;
 -- 3: krigin ---> TO DO
 
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_SpatialInterpolation(
+CREATE OR REPLACE FUNCTION crankshaft.SpatialInterpolation(
     IN query text,
     IN point geometry,
     IN method integer DEFAULT 1,
@@ -196,14 +298,14 @@ DECLARE
     output numeric;
 BEGIN
     EXECUTE 'WITH a AS('||query||') SELECT array_agg(the_geom), array_agg(attrib) FROM a' INTO gs, vs;
-    SELECT crankshaft.CDB_SpatialInterpolation(gs, vs, point, method, p1,p2) INTO output FROM a;
+    SELECT crankshaft.SpatialInterpolation(gs, vs, point, method, p1,p2) INTO output FROM a;
 
     RETURN output;
 END;
 $$
 language plpgsql VOLATILE PARALLEL UNSAFE;
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_SpatialInterpolation(
+CREATE OR REPLACE FUNCTION crankshaft.SpatialInterpolation(
     IN geomin geometry[],
     IN colin numeric[],
     IN point geometry,
@@ -325,10 +427,10 @@ language plpgsql IMMUTABLE PARALLEL SAFE;
 -------------------------------------------------
 -- =============================================================================================
 --
--- CDB_Voronoi
+-- Voronoi
 --
 -- =============================================================================================
-CREATE OR REPLACE FUNCTION crankshaft.CDB_voronoi(
+CREATE OR REPLACE FUNCTION crankshaft.Voronoi(
     IN geomin geometry[],
     IN buffer numeric DEFAULT 0.5,
     IN tolerance numeric DEFAULT 1e-9
@@ -561,7 +663,7 @@ LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE;
 -------------------------------------------------
 -- Moran's I Global Measure (public-facing)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_AreasOfInterestGlobal(
+  crankshaft.AreasOfInterestGlobal(
       subquery TEXT,
       column_name TEXT,
       w_type TEXT DEFAULT 'knn',
@@ -572,7 +674,7 @@ CREATE OR REPLACE FUNCTION
 RETURNS TABLE (moran NUMERIC, significance NUMERIC)
 AS $$
   from sys import path
-  path.append('/Library/edb/languagepack/v3/Python-3.10/crankshaft_env/lib/python3.10/site-packages')
+  path.append('')
   from crankshaft.clustering import Moran
   # TODO: use named parameters or a dictionary
   moran = Moran()
@@ -582,7 +684,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local (internal function) - DEPRECATED
 CREATE OR REPLACE FUNCTION
-  crankshaft._CDB_AreasOfInterestLocal(
+  crankshaft._AreasOfInterestLocal(
       subquery TEXT,
       column_name TEXT,
       w_type TEXT,
@@ -598,7 +700,7 @@ RETURNS TABLE (
     vals NUMERIC)
 AS $$
   from sys import path
-  path.append('/Library/edb/languagepack/v3/Python-3.10/crankshaft_env/lib/python3.10/site-packages')
+  path.append('')
   from crankshaft.clustering import Moran
   moran = Moran()
   result = moran.local_stat(subquery, column_name, w_type,
@@ -609,7 +711,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local (internal function)
 CREATE OR REPLACE FUNCTION
-  crankshaft._CDB_MoransILocal(
+  crankshaft._MoransILocal(
       subquery TEXT,
       column_name TEXT,
       w_type TEXT,
@@ -628,7 +730,7 @@ RETURNS TABLE (
     rowid INT)
 AS $$
 from sys import path
-path.append('/Library/edb/languagepack/v3/Python-3.10/crankshaft_env/lib/python3.10/site-packages')
+path.append('')
 from crankshaft.clustering import Moran
 moran = Moran()
 return moran.local_stat(subquery, column_name, w_type,
@@ -638,9 +740,9 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 
 -- Moran's I Local (public-facing function)
---  Replaces CDB_AreasOfInterestLocal
+--  Replaces AreasOfInterestLocal
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_MoransILocal(
+  crankshaft.MoransILocal(
     subquery TEXT,
     column_name TEXT,
     w_type TEXT DEFAULT 'knn',
@@ -662,7 +764,7 @@ AS $$
   SELECT
     quads, significance, spatial_lag, spatial_lag_std,
     orig_val, orig_val_std, moran_stat, rowid
-  FROM crankshaft._CDB_MoransILocal(
+  FROM crankshaft._MoransILocal(
     subquery, column_name, w_type,
     num_ngbrs, permutations, geom_col, id_col);
 
@@ -670,7 +772,7 @@ $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local (public-facing function) - DEPRECATED
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_AreasOfInterestLocal(
+  crankshaft.AreasOfInterestLocal(
     subquery TEXT,
     column_name TEXT,
     w_type TEXT DEFAULT 'knn',
@@ -682,13 +784,13 @@ RETURNS TABLE (moran NUMERIC, quads TEXT, significance NUMERIC, rowid INT, vals 
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocal(subquery, column_name, w_type, num_ngbrs, permutations, geom_col, id_col);
+  FROM crankshaft._AreasOfInterestLocal(subquery, column_name, w_type, num_ngbrs, permutations, geom_col, id_col);
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I only for HH and HL (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialHotspots(
+  crankshaft.GetSpatialHotspots(
     subquery TEXT,
     column_name TEXT,
     w_type TEXT DEFAULT 'knn',
@@ -700,14 +802,14 @@ CREATE OR REPLACE FUNCTION
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocal(subquery, column_name, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocal(subquery, column_name, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('HH', 'HL');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I only for LL and LH (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialColdspots(
+  crankshaft.GetSpatialColdspots(
     subquery TEXT,
     attr TEXT,
     w_type TEXT DEFAULT 'knn',
@@ -719,14 +821,14 @@ CREATE OR REPLACE FUNCTION
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocal(subquery, attr, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocal(subquery, attr, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('LL', 'LH');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I only for LH and HL (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialOutliers(
+  crankshaft.GetSpatialOutliers(
     subquery TEXT,
     attr TEXT,
     w_type TEXT DEFAULT 'knn',
@@ -738,14 +840,14 @@ CREATE OR REPLACE FUNCTION
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocal(subquery, attr, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocal(subquery, attr, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('HL', 'LH');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Global Rate (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_AreasOfInterestGlobalRate(
+  crankshaft.AreasOfInterestGlobalRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -757,7 +859,7 @@ CREATE OR REPLACE FUNCTION
 RETURNS TABLE (moran FLOAT, significance FLOAT)
 AS $$
   from sys import path
-  path.append('/Library/edb/languagepack/v3/Python-3.10/crankshaft_env/lib/python3.10/site-packages')
+  path.append('')
   from crankshaft.clustering import Moran
   moran = Moran()
   # TODO: use named parameters or a dictionary
@@ -768,7 +870,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local Rate (internal function) - DEPRECATED
 CREATE OR REPLACE FUNCTION
-  crankshaft._CDB_AreasOfInterestLocalRate(
+  crankshaft._AreasOfInterestLocalRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -786,7 +888,7 @@ TABLE(
     vals NUMERIC)
 AS $$
   from sys import path
-  path.append('/Library/edb/languagepack/v3/Python-3.10/crankshaft_env/lib/python3.10/site-packages')
+  path.append('')
   from crankshaft.clustering import Moran
   moran = Moran()
   # TODO: use named parameters or a dictionary
@@ -797,7 +899,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local Rate (public-facing function) - DEPRECATED
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_AreasOfInterestLocalRate(
+  crankshaft.AreasOfInterestLocalRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -811,13 +913,13 @@ TABLE(moran NUMERIC, quads TEXT, significance NUMERIC, rowid INT, vals NUMERIC)
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col);
+  FROM crankshaft._AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col);
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Internal function
 CREATE OR REPLACE FUNCTION
-  crankshaft._CDB_MoransILocalRate(
+  crankshaft._MoransILocalRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -838,7 +940,7 @@ TABLE(
     rowid INT)
 AS $$
 from sys import path
-path.append('/Library/edb/languagepack/v3/Python-3.10/crankshaft_env/lib/python3.10/site-packages')
+path.append('')
 from crankshaft.clustering import Moran
 moran = Moran()
 return moran.local_rate_stat(
@@ -854,9 +956,9 @@ return moran.local_rate_stat(
 $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Rate
--- Replaces CDB_AreasOfInterestLocalRate
+-- Replaces AreasOfInterestLocalRate
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_MoransILocalRate(
+  crankshaft.MoransILocalRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -880,7 +982,7 @@ AS $$
 SELECT
   quads, significance, spatial_lag, spatial_lag_std,
   orig_val, orig_val_std, moran_stat, rowid
-FROM crankshaft._CDB_MoransILocalRate(
+FROM crankshaft._MoransILocalRate(
   subquery, numerator, denominator, w_type,
   num_ngbrs, permutations, geom_col, id_col);
 
@@ -888,7 +990,7 @@ $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local Rate only for HH and HL (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialHotspotsRate(
+  crankshaft.GetSpatialHotspotsRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -902,14 +1004,14 @@ TABLE(moran NUMERIC, quads TEXT, significance NUMERIC, rowid INT, vals NUMERIC)
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('HH', 'HL');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local Rate only for LL and LH (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialColdspotsRate(
+  crankshaft.GetSpatialColdspotsRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -923,14 +1025,14 @@ TABLE(moran NUMERIC, quads TEXT, significance NUMERIC, rowid INT, vals NUMERIC)
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('LL', 'LH');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local Rate only for LH and HL (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialOutliersRate(
+  crankshaft.GetSpatialOutliersRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -944,7 +1046,7 @@ TABLE(moran NUMERIC, quads TEXT, significance NUMERIC, rowid INT, vals NUMERIC)
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('HL', 'LH');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
@@ -954,7 +1056,7 @@ $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 -------------------------------------------------
 -- Spatial k-means clustering
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_KMeans(
+CREATE OR REPLACE FUNCTION crankshaft.KMeans(
   query TEXT,
   no_clusters INTEGER,
   no_init INTEGER DEFAULT 20
@@ -964,7 +1066,7 @@ RETURNS TABLE(
   cluster_no INTEGER
 ) AS $$
 from sys import path
-path.append('/Library/edb/languagepack/v3/Python-3.10/crankshaft_env/lib/python3.10/site-packages')
+path.append('')
 from crankshaft.clustering import Kmeans
 kmeans = Kmeans()
 return kmeans.spatial(query, no_clusters, no_init)
@@ -979,7 +1081,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 --              deviation of 1
 -- id_colname: name of the id column
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_KMeansNonspatial(
+CREATE OR REPLACE FUNCTION crankshaft.KMeansNonspatial(
   query TEXT,
   colnames TEXT[],
   no_clusters INTEGER,
@@ -994,7 +1096,7 @@ RETURNS TABLE(
   rowid bigint
 ) AS $$
 from sys import path
-path.append('/Library/edb/languagepack/v3/Python-3.10/crankshaft_env/lib/python3.10/site-packages')
+path.append('')
 from crankshaft.clustering import Kmeans
 kmeans = Kmeans()
 return kmeans.nonspatial(query, colnames, no_clusters,
@@ -1003,7 +1105,7 @@ return kmeans.nonspatial(query, colnames, no_clusters,
 $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_WeightedMeanS(
+CREATE OR REPLACE FUNCTION crankshaft.WeightedMeanS(
   state NUMERIC[],
   the_geom GEOMETRY(Point, 4326),
   weight NUMERIC
@@ -1029,7 +1131,7 @@ END
 $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_WeightedMeanF(state NUMERIC[])
+CREATE OR REPLACE FUNCTION crankshaft.WeightedMeanF(state NUMERIC[])
 RETURNS GEOMETRY AS
 $$
 BEGIN
@@ -1044,9 +1146,9 @@ $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
 -- Create aggregate if it did not exist
 DO $$ BEGIN
-    CREATE AGGREGATE crankshaft.CDB_WeightedMean(geometry(Point, 4326), NUMERIC) (
-        SFUNC = crankshaft.CDB_WeightedMeanS,
-        FINALFUNC = crankshaft.CDB_WeightedMeanF,
+    CREATE AGGREGATE crankshaft.WeightedMean(geometry(Point, 4326), NUMERIC) (
+        SFUNC = crankshaft.WeightedMeanS,
+        FINALFUNC = crankshaft.WeightedMeanF,
         STYPE = Numeric[],
         PARALLEL = SAFE,
         INITCOND = "{0.0,0.0,0.0}"
@@ -1073,7 +1175,7 @@ END $$;
 -- Returns: TABLE(geomout geometry, colout numeric)
 --
 --
-CREATE OR REPLACE FUNCTION crankshaft.CDB_Densify(
+CREATE OR REPLACE FUNCTION crankshaft.Densify(
     IN geomin geometry[],
     IN colin numeric[],
     IN iterations integer
@@ -1131,7 +1233,7 @@ $$ language plpgsql IMMUTABLE PARALLEL SAFE;
 -------------------------------------------------
 -------------------------------------------------
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_TINmap(
+CREATE OR REPLACE FUNCTION crankshaft.TINmap(
     IN geomin geometry[],
     IN colin numeric[],
     IN iterations integer
@@ -1149,7 +1251,7 @@ DECLARE
     vc numeric;
     coltemp numeric[];
 BEGIN
-    SELECT array_agg(dens.geomout), array_agg(dens.colout) INTO p, vals FROM crankshaft.CDB_Densify(geomin, colin, iterations) dens;
+    SELECT array_agg(dens.geomout), array_agg(dens.colout) INTO p, vals FROM crankshaft.Densify(geomin, colin, iterations) dens;
     WITH    a as (SELECT unnest(p) AS e),
             b as (SELECT ST_DelaunayTriangles(ST_Collect(a.e),0.001, 0) AS t FROM a),
             c as (SELECT (ST_Dump(t)).geom AS v FROM b)
@@ -1182,7 +1284,7 @@ $$ language plpgsql IMMUTABLE PARALLEL SAFE;
 -- Getis-Ord's G
 -- Hotspot/Coldspot Analysis tool
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetisOrdsG(
+  crankshaft.GetisOrdsG(
       subquery TEXT,
       column_name TEXT,
       w_type TEXT DEFAULT 'knn',
@@ -1193,7 +1295,7 @@ CREATE OR REPLACE FUNCTION
 RETURNS TABLE (z_score NUMERIC, p_value NUMERIC, p_z_sim NUMERIC, rowid BIGINT)
 AS $$
   from sys import path
-  path.append('/Library/edb/languagepack/v3/Python-3.10/crankshaft_env/lib/python3.10/site-packages')
+  path.append('')
   from crankshaft.clustering import Getis
   getis = Getis()
   return getis.getis_ord(subquery, column_name, w_type, num_ngbrs, permutations, geom_col, id_col)
@@ -1208,7 +1310,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- Find outliers using a static threshold
 --
-CREATE OR REPLACE FUNCTION crankshaft.CDB_StaticOutlier(column_value numeric, threshold numeric)
+CREATE OR REPLACE FUNCTION crankshaft.StaticOutlier(column_value numeric, threshold numeric)
 RETURNS boolean
 AS $$
 BEGIN
@@ -1221,7 +1323,7 @@ $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE ;
 -- Find outliers by a percentage above the threshold
 -- TODO: add symmetric option? `is_symmetric boolean DEFAULT false`
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_PercentOutlier(column_values numeric[], outlier_fraction numeric, ids int[])
+CREATE OR REPLACE FUNCTION crankshaft.PercentOutlier(column_values numeric[], outlier_fraction numeric, ids int[])
 RETURNS TABLE(is_outlier boolean, rowid int)
 AS $$
 DECLARE
@@ -1249,7 +1351,7 @@ $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
 -- Find outliers above a given number of standard deviations from the mean
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_StdDevOutlier(column_values numeric[], num_deviations numeric, ids int[], is_symmetric boolean DEFAULT true)
+CREATE OR REPLACE FUNCTION crankshaft.StdDevOutlier(column_values numeric[], num_deviations numeric, ids int[], is_symmetric boolean DEFAULT true)
 RETURNS TABLE(is_outlier boolean, rowid int)
 AS $$
 DECLARE
@@ -1284,7 +1386,7 @@ $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 -------------------------------------------------
 -------------------------------------------------
 -------------------------------------------------
-CREATE OR REPLACE FUNCTION crankshaft.CDB_Contour(
+CREATE OR REPLACE FUNCTION crankshaft.Contour(
     IN geomin geometry[],
     IN colin numeric[],
     IN buffer numeric,
@@ -1322,7 +1424,7 @@ BEGIN
         ELSE 10000
     END INTO cell_count;
 
-    -- we don't have iterative barycentric interpolation in CDB_interpolation,
+    -- we don't have iterative barycentric interpolation in interpolation,
     --    and it's a costy function, so let's make a custom one here till
     --    we update the code
     -- tin := ARRAY[]::geometry[];
@@ -1366,7 +1468,7 @@ BEGIN
     ),
     grid as(
         SELECT
-            ST_Transform(crankshaft.CDB_RectangleGrid(e.geom, r.cell, r.cell), 4326) as geom
+            ST_Transform(crankshaft.RectangleGrid(e.geom, r.cell, r.cell), 4326) as geom
         FROM envelope3857 e, resolution r
     ),
     interp as(
@@ -1374,20 +1476,20 @@ BEGIN
             geom,
             CASE
                 WHEN intmethod=1 THEN crankshaft._interp_in_tin(geomin, colin, tin, ST_Centroid(geom))
-                ELSE crankshaft.CDB_SpatialInterpolation(geomin, colin, ST_Centroid(geom), intmethod)
+                ELSE crankshaft.SpatialInterpolation(geomin, colin, ST_Centroid(geom), intmethod)
             END as val
         FROM grid
     ),
     classes as(
         SELECT CASE
             WHEN classmethod = 0 THEN
-                crankshaft.CDB_EqualIntervalBins(array_agg(val), steps)
+                crankshaft.EqualIntervalBins(array_agg(val), steps)
             WHEN classmethod = 1 THEN
-                crankshaft.CDB_HeadsTailsBins(array_agg(val), steps)
+                crankshaft.HeadsTailsBins(array_agg(val), steps)
             WHEN classmethod = 2 THEN
-                crankshaft.CDB_JenksBins(array_agg(val), steps)
+                crankshaft.JenksBins(array_agg(val), steps)
             ELSE
-                crankshaft.CDB_QuantileBins(array_agg(val), steps)
+                crankshaft.QuantileBins(array_agg(val), steps)
             END as b
         FROM interp
         where val is not null
@@ -1431,7 +1533,7 @@ $$ language plpgsql VOLATILE PARALLEL RESTRICTED;
 -- =====================================================================
 -- Interp in grid, so we can use barycentric with a precalculated tin (NNI)
 -- =====================================================================
-CREATE OR REPLACE FUNCTION _interp_in_tin(
+CREATE OR REPLACE FUNCTION crankshaft._interp_in_tin(
     IN geomin geometry[],
     IN colin numeric[],
     IN tin geometry[],
@@ -1511,7 +1613,7 @@ language plpgsql IMMUTABLE PARALLEL SAFE;
 -- Return value:
 --   Aereal-weighted interpolation of the column values over the geometry
 CREATE OR REPLACE
-FUNCTION crankshaft.cdb_overlap_sum(geom geometry, target_table_name text, target_column text, schema_name text DEFAULT NULL)
+FUNCTION crankshaft.OverlapSum(geom geometry, target_table_name text, target_column text, schema_name text DEFAULT NULL)
   RETURNS numeric AS
 $$
 DECLARE
@@ -1549,7 +1651,7 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -- misses per point the funciton accepts before giving up.
 --
 -- Returns: Multipoint with the requested points
-CREATE OR REPLACE FUNCTION crankshaft.cdb_dot_density(geom geometry , no_points Integer, max_iter_per_point Integer DEFAULT 1000)
+CREATE OR REPLACE FUNCTION crankshaft.DotDensity(geom geometry , no_points Integer, max_iter_per_point Integer DEFAULT 1000)
 RETURNS GEOMETRY AS $$
 DECLARE
   extent GEOMETRY;
@@ -1613,7 +1715,7 @@ LANGUAGE plpgsql VOLATILE PARALLEL RESTRICTED;
 --               as the extent.
 --
 --
-CREATE OR REPLACE FUNCTION crankshaft.CDB_RectangleGrid(ext GEOMETRY, width FLOAT8, height FLOAT8, origin GEOMETRY DEFAULT NULL)
+CREATE OR REPLACE FUNCTION crankshaft.RectangleGrid(ext GEOMETRY, width FLOAT8, height FLOAT8, origin GEOMETRY DEFAULT NULL)
 RETURNS SETOF GEOMETRY
 AS $$
 DECLARE
@@ -1705,7 +1807,7 @@ $$ LANGUAGE 'plpgsql' IMMUTABLE PARALLEL SAFE;
 --
 --
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_EqualIntervalBins ( in_array NUMERIC[], breaks INT ) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION crankshaft.EqualIntervalBins ( in_array NUMERIC[], breaks INT ) RETURNS NUMERIC[] as $$
 DECLARE
     diff numeric;
     min_val numeric;
@@ -1740,7 +1842,7 @@ $$ language plpgsql IMMUTABLE PARALLEL SAFE;
 --
 --
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_HeadsTailsBins ( in_array NUMERIC[], breaks INT) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION crankshaft.HeadsTailsBins ( in_array NUMERIC[], breaks INT) RETURNS NUMERIC[] as $$
 DECLARE
     element_count INT4;
     arr_mean numeric;
@@ -1793,7 +1895,7 @@ $$ language plpgsql IMMUTABLE PARALLEL SAFE;
 --
 
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_JenksBins ( in_array NUMERIC[], breaks INT, iterations INT DEFAULT 5, invert BOOLEAN DEFAULT FALSE) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION crankshaft.JenksBins ( in_array NUMERIC[], breaks INT, iterations INT DEFAULT 5, invert BOOLEAN DEFAULT FALSE) RETURNS NUMERIC[] as $$
 DECLARE
     element_count INT4;
     arr_mean NUMERIC;
@@ -1826,7 +1928,7 @@ BEGIN
     SELECT avg(v) INTO arr_mean FROM (  SELECT unnest(in_array) as v ) x;
 
     -- assume best is actually Quantile
-    SELECT crankshaft.CDB_QuantileBins(in_array, breaks) INTO quant;
+    SELECT crankshaft.QuantileBins(in_array, breaks) INTO quant;
 
     -- if data is very very large, just return quant and be done
     IF element_count > 5000000 THEN
@@ -1855,7 +1957,7 @@ BEGIN
         i = i+1;
     END LOOP;
 
-    best_result = crankshaft.CDB_JenksBinsIteration( in_array, breaks, classes, invert, element_count, arr_mean, shuffles);
+    best_result = crankshaft.JenksBinsIteration( in_array, breaks, classes, invert, element_count, arr_mean, shuffles);
 
     --set the seed so we can ensure the same results
     SELECT setseed(0.4567) INTO seedtarget;
@@ -1885,7 +1987,7 @@ BEGIN
             END IF;
             i := i+1;
         END LOOP;
-        curr_result = crankshaft.CDB_JenksBinsIteration( in_array, breaks, classes, invert, element_count, arr_mean, shuffles);
+        curr_result = crankshaft.JenksBinsIteration( in_array, breaks, classes, invert, element_count, arr_mean, shuffles);
 
         IF curr_result[1] > best_result[1] THEN
             best_result = curr_result;
@@ -1904,7 +2006,7 @@ $$ language plpgsql VOLATILE PARALLEL RESTRICTED;
 -- Perform a single iteration of the Jenks classification
 --
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_JenksBinsIteration ( in_array NUMERIC[], breaks INT, classes INT[][], invert BOOLEAN, element_count INT4, arr_mean NUMERIC, max_search INT DEFAULT 50) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION crankshaft.JenksBinsIteration ( in_array NUMERIC[], breaks INT, classes INT[][], invert BOOLEAN, element_count INT4, arr_mean NUMERIC, max_search INT DEFAULT 50) RETURNS NUMERIC[] as $$
 DECLARE
     tmp_val numeric;
     new_classes int[][];
@@ -2008,7 +2110,7 @@ $$ language plpgsql IMMUTABLE PARALLEL SAFE;
 -- @param breaks The number of bins you want to find.
 --
 --
-CREATE OR REPLACE FUNCTION crankshaft.CDB_QuantileBins ( in_array NUMERIC[], breaks INT) RETURNS NUMERIC[] as $$
+CREATE OR REPLACE FUNCTION crankshaft.QuantileBins ( in_array NUMERIC[], breaks INT) RETURNS NUMERIC[] as $$
 DECLARE
     element_count INT4;
     break_size numeric;

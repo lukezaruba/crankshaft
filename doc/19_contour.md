@@ -2,34 +2,35 @@
 
 Function to generate a contour map from an scatter dataset of points, using one of these three methods:
 
-* [Nearest neighbor](https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation)
-* [Barycentric](https://en.wikipedia.org/wiki/Barycentric_coordinate_system)
-* [IDW](https://en.wikipedia.org/wiki/Inverse_distance_weighting)
+- [Nearest neighbor](https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation)
+- [Barycentric](https://en.wikipedia.org/wiki/Barycentric_coordinate_system)
+- [IDW](https://en.wikipedia.org/wiki/Inverse_distance_weighting)
 
-### CDB_Contour (geom geometry[], values numeric[], resolution integer, buffer numeric, method, classmethod integer, steps integer)
+### Contour (geom geometry[], values numeric[], resolution integer, buffer numeric, method, classmethod integer, steps integer)
 
 #### Arguments
 
-| Name | Type | Description |
-|------|------|-------------|
-| geom   | geometry[]  | Array of points's geometries |
-| values | numeric[]   | Array of points' values for the param under study|
-| buffer   | numeric     | Value between 0 and 1 for spatial buffer of the set of points
-| method   | integer     | 0:nearest neighbor, 1: barycentric, 2: IDW|
-| classmethod   | integer     | 0:equals, 1: heads&tails, 2:jenks, 3:quantiles |
-| steps   | integer     | Number of steps in the classification|
-| max_time   | integer     | if <= 0: max processing time in seconds (smart resolution) , if >0: resolution in meters
+| Name        | Type       | Description                                                                              |
+| ----------- | ---------- | ---------------------------------------------------------------------------------------- |
+| geom        | geometry[] | Array of points's geometries                                                             |
+| values      | numeric[]  | Array of points' values for the param under study                                        |
+| buffer      | numeric    | Value between 0 and 1 for spatial buffer of the set of points                            |
+| method      | integer    | 0:nearest neighbor, 1: barycentric, 2: IDW                                               |
+| classmethod | integer    | 0:equals, 1: heads&tails, 2:jenks, 3:quantiles                                           |
+| steps       | integer    | Number of steps in the classification                                                    |
+| max_time    | integer    | if <= 0: max processing time in seconds (smart resolution) , if >0: resolution in meters |
 
 ### Returns
+
 Returns a table object
 
-| Name | Type | Description |
-|------|------|-------------|
-| the_geom   | geometry  | Geometries of the classified contour map|
-| avg_value | numeric   | Avg value of the area|
-| min_value | numeric   | Min value of the area|
-| max_value | numeric   | Max value of the areal|
-| bin | integer   | Index of the class of the area|
+| Name      | Type     | Description                              |
+| --------- | -------- | ---------------------------------------- |
+| the_geom  | geometry | Geometries of the classified contour map |
+| avg_value | numeric  | Avg value of the area                    |
+| min_value | numeric  | Min value of the area                    |
+| max_value | numeric  | Max value of the areal                   |
+| bin       | integer  | Index of the class of the area           |
 
 #### Example Usage
 
@@ -44,7 +45,7 @@ SELECT
     foo.*
 FROM
     a,
-    cdb_crankshaft.CDB_contour(a.g, a.vals,  0.0, 1, 3, 5, 60) foo
+    crankshaft.contour(a.g, a.vals,  0.0, 1, 3, 5, 60) foo
 )
 SELECT bin, avg_value from b order by bin;
 ```

@@ -13,6 +13,16 @@ sqlUser=$(sed "5q;d" release/config.json | sed 's/"sqlUser": "//g' | sed 's/",//
 sqlDB=$(sed "6q;d" release/config.json | sed 's/"sqlDB": "//g' | sed 's/"//g' | sed 's/ //g')
 envPython="$envLoc/$envName/lib/python3.10/site-packages"
 
+# Combining SQL functions to single file
+touch release/crankshaft--0.10.0.sql
+cd src/pg/sql
+cat *.sql > ../../../release/crankshaft--0.10.0.sql
+
+sed -i '' 's/@VERSION/0.10.0/g' ../../../release/crankshaft--0.10.0.sql
+sed -i '' "s|@ENV|$envPython|g" ../../../release/crankshaft--0.10.0.sql
+
+cd ../../..
+
 # Setup Python env
 cd $pgPython
 
@@ -29,8 +39,4 @@ deactivate
 cd $wd
 
 # Install Functions with psql
-curl -o CRANKSHAFT.sql https://raw.githubusercontent.com/lukezaruba/crankshaft/dev/release/crankshaft--0.10.0.sql
-
-psql -U $sqlUser -d $sqlDB -f CRANKSHAFT.sql
-
-rm CRANKSHAFT.sql
+psql -U $sqlUser -d $sqlDB -f ./release/crankshaft--0.10.0.sql

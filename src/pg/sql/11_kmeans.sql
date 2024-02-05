@@ -1,6 +1,6 @@
 -- Spatial k-means clustering
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_KMeans(
+CREATE OR REPLACE FUNCTION crankshaft.KMeans(
   query TEXT,
   no_clusters INTEGER,
   no_init INTEGER DEFAULT 20
@@ -25,7 +25,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 --              deviation of 1
 -- id_colname: name of the id column
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_KMeansNonspatial(
+CREATE OR REPLACE FUNCTION crankshaft.KMeansNonspatial(
   query TEXT,
   colnames TEXT[],
   no_clusters INTEGER,
@@ -49,7 +49,7 @@ return kmeans.nonspatial(query, colnames, no_clusters,
 $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_WeightedMeanS(
+CREATE OR REPLACE FUNCTION crankshaft.WeightedMeanS(
   state NUMERIC[],
   the_geom GEOMETRY(Point, 4326),
   weight NUMERIC
@@ -75,7 +75,7 @@ END
 $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
 
-CREATE OR REPLACE FUNCTION crankshaft.CDB_WeightedMeanF(state NUMERIC[])
+CREATE OR REPLACE FUNCTION crankshaft.WeightedMeanF(state NUMERIC[])
 RETURNS GEOMETRY AS
 $$
 BEGIN
@@ -90,9 +90,9 @@ $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
 -- Create aggregate if it did not exist
 DO $$ BEGIN
-    CREATE AGGREGATE crankshaft.CDB_WeightedMean(geometry(Point, 4326), NUMERIC) (
-        SFUNC = crankshaft.CDB_WeightedMeanS,
-        FINALFUNC = crankshaft.CDB_WeightedMeanF,
+    CREATE AGGREGATE crankshaft.WeightedMean(geometry(Point, 4326), NUMERIC) (
+        SFUNC = crankshaft.WeightedMeanS,
+        FINALFUNC = crankshaft.WeightedMeanF,
         STYPE = Numeric[],
         PARALLEL = SAFE,
         INITCOND = "{0.0,0.0,0.0}"

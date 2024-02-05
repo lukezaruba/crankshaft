@@ -14,7 +14,7 @@
 -- Return value:
 --   Aereal-weighted interpolation of the column values over the geometry
 CREATE OR REPLACE
-FUNCTION crankshaft.cdb_overlap_sum(geom geometry, target_table_name text, target_column text, schema_name text DEFAULT NULL)
+FUNCTION crankshaft.OverlapSum(geom geometry, target_table_name text, target_column text, schema_name text DEFAULT NULL)
   RETURNS numeric AS
 $$
 DECLARE

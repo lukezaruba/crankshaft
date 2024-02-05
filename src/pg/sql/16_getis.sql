@@ -1,7 +1,7 @@
 -- Getis-Ord's G
 -- Hotspot/Coldspot Analysis tool
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetisOrdsG(
+  crankshaft.GetisOrdsG(
       subquery TEXT,
       column_name TEXT,
       w_type TEXT DEFAULT 'knn',

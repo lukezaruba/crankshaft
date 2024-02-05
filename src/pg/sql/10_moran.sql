@@ -1,6 +1,6 @@
 -- Moran's I Global Measure (public-facing)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_AreasOfInterestGlobal(
+  crankshaft.AreasOfInterestGlobal(
       subquery TEXT,
       column_name TEXT,
       w_type TEXT DEFAULT 'knn',
@@ -21,7 +21,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local (internal function) - DEPRECATED
 CREATE OR REPLACE FUNCTION
-  crankshaft._CDB_AreasOfInterestLocal(
+  crankshaft._AreasOfInterestLocal(
       subquery TEXT,
       column_name TEXT,
       w_type TEXT,
@@ -48,7 +48,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local (internal function)
 CREATE OR REPLACE FUNCTION
-  crankshaft._CDB_MoransILocal(
+  crankshaft._MoransILocal(
       subquery TEXT,
       column_name TEXT,
       w_type TEXT,
@@ -77,9 +77,9 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 
 -- Moran's I Local (public-facing function)
---  Replaces CDB_AreasOfInterestLocal
+--  Replaces AreasOfInterestLocal
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_MoransILocal(
+  crankshaft.MoransILocal(
     subquery TEXT,
     column_name TEXT,
     w_type TEXT DEFAULT 'knn',
@@ -101,7 +101,7 @@ AS $$
   SELECT
     quads, significance, spatial_lag, spatial_lag_std,
     orig_val, orig_val_std, moran_stat, rowid
-  FROM crankshaft._CDB_MoransILocal(
+  FROM crankshaft._MoransILocal(
     subquery, column_name, w_type,
     num_ngbrs, permutations, geom_col, id_col);
 
@@ -109,7 +109,7 @@ $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local (public-facing function) - DEPRECATED
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_AreasOfInterestLocal(
+  crankshaft.AreasOfInterestLocal(
     subquery TEXT,
     column_name TEXT,
     w_type TEXT DEFAULT 'knn',
@@ -121,13 +121,13 @@ RETURNS TABLE (moran NUMERIC, quads TEXT, significance NUMERIC, rowid INT, vals 
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocal(subquery, column_name, w_type, num_ngbrs, permutations, geom_col, id_col);
+  FROM crankshaft._AreasOfInterestLocal(subquery, column_name, w_type, num_ngbrs, permutations, geom_col, id_col);
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I only for HH and HL (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialHotspots(
+  crankshaft.GetSpatialHotspots(
     subquery TEXT,
     column_name TEXT,
     w_type TEXT DEFAULT 'knn',
@@ -139,14 +139,14 @@ CREATE OR REPLACE FUNCTION
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocal(subquery, column_name, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocal(subquery, column_name, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('HH', 'HL');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I only for LL and LH (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialColdspots(
+  crankshaft.GetSpatialColdspots(
     subquery TEXT,
     attr TEXT,
     w_type TEXT DEFAULT 'knn',
@@ -158,14 +158,14 @@ CREATE OR REPLACE FUNCTION
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocal(subquery, attr, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocal(subquery, attr, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('LL', 'LH');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I only for LH and HL (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialOutliers(
+  crankshaft.GetSpatialOutliers(
     subquery TEXT,
     attr TEXT,
     w_type TEXT DEFAULT 'knn',
@@ -177,14 +177,14 @@ CREATE OR REPLACE FUNCTION
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocal(subquery, attr, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocal(subquery, attr, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('HL', 'LH');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Global Rate (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_AreasOfInterestGlobalRate(
+  crankshaft.AreasOfInterestGlobalRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -207,7 +207,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local Rate (internal function) - DEPRECATED
 CREATE OR REPLACE FUNCTION
-  crankshaft._CDB_AreasOfInterestLocalRate(
+  crankshaft._AreasOfInterestLocalRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -236,7 +236,7 @@ $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local Rate (public-facing function) - DEPRECATED
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_AreasOfInterestLocalRate(
+  crankshaft.AreasOfInterestLocalRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -250,13 +250,13 @@ TABLE(moran NUMERIC, quads TEXT, significance NUMERIC, rowid INT, vals NUMERIC)
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col);
+  FROM crankshaft._AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col);
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Internal function
 CREATE OR REPLACE FUNCTION
-  crankshaft._CDB_MoransILocalRate(
+  crankshaft._MoransILocalRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -293,9 +293,9 @@ return moran.local_rate_stat(
 $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Rate
--- Replaces CDB_AreasOfInterestLocalRate
+-- Replaces AreasOfInterestLocalRate
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_MoransILocalRate(
+  crankshaft.MoransILocalRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -319,7 +319,7 @@ AS $$
 SELECT
   quads, significance, spatial_lag, spatial_lag_std,
   orig_val, orig_val_std, moran_stat, rowid
-FROM crankshaft._CDB_MoransILocalRate(
+FROM crankshaft._MoransILocalRate(
   subquery, numerator, denominator, w_type,
   num_ngbrs, permutations, geom_col, id_col);
 
@@ -327,7 +327,7 @@ $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local Rate only for HH and HL (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialHotspotsRate(
+  crankshaft.GetSpatialHotspotsRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -341,14 +341,14 @@ TABLE(moran NUMERIC, quads TEXT, significance NUMERIC, rowid INT, vals NUMERIC)
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('HH', 'HL');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local Rate only for LL and LH (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialColdspotsRate(
+  crankshaft.GetSpatialColdspotsRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -362,14 +362,14 @@ TABLE(moran NUMERIC, quads TEXT, significance NUMERIC, rowid INT, vals NUMERIC)
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('LL', 'LH');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
 
 -- Moran's I Local Rate only for LH and HL (public-facing function)
 CREATE OR REPLACE FUNCTION
-  crankshaft.CDB_GetSpatialOutliersRate(
+  crankshaft.GetSpatialOutliersRate(
       subquery TEXT,
       numerator TEXT,
       denominator TEXT,
@@ -383,7 +383,7 @@ TABLE(moran NUMERIC, quads TEXT, significance NUMERIC, rowid INT, vals NUMERIC)
 AS $$
 
   SELECT moran, quads, significance, rowid, vals
-  FROM crankshaft._CDB_AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
+  FROM crankshaft._AreasOfInterestLocalRate(subquery, numerator, denominator, w_type, num_ngbrs, permutations, geom_col, id_col)
   WHERE quads IN ('HL', 'LH');
 
 $$ LANGUAGE SQL VOLATILE PARALLEL UNSAFE;
