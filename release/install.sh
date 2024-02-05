@@ -6,11 +6,11 @@ wd=$(pwd)
 config=$1;
 
 # Read in config data
-pgPython=$(sed "2q;d" release/config.json | sed 's/"pgPython": "//g' | sed 's/",//g' | sed 's/ //g')
-envName=$(sed "3q;d" release/config.json | sed 's/"envName": "//g' | sed 's/",//g' | sed 's/ //g')
-envLoc=$(sed "4q;d" release/config.json | sed 's/"envLoc": "//g' | sed 's/",//g' | sed 's/ //g')
-sqlUser=$(sed "5q;d" release/config.json | sed 's/"sqlUser": "//g' | sed 's/",//g' | sed 's/ //g')
-sqlDB=$(sed "6q;d" release/config.json | sed 's/"sqlDB": "//g' | sed 's/"//g' | sed 's/ //g')
+pgPython=$(sed "2q;d" config.json | sed 's/"pgPython": "//g' | sed 's/",//g' | sed 's/ //g')
+envName=$(sed "3q;d" config.json | sed 's/"envName": "//g' | sed 's/",//g' | sed 's/ //g')
+envLoc=$(sed "4q;d" config.json | sed 's/"envLoc": "//g' | sed 's/",//g' | sed 's/ //g')
+sqlUser=$(sed "5q;d" config.json | sed 's/"sqlUser": "//g' | sed 's/",//g' | sed 's/ //g')
+sqlDB=$(sed "6q;d" config.json | sed 's/"sqlDB": "//g' | sed 's/"//g' | sed 's/ //g')
 envPython="$envLoc/$envName/lib/python3.10/site-packages"
 
 # Setup Python env
@@ -34,3 +34,5 @@ curl -o CRANKSHAFT.sql https://raw.githubusercontent.com/lukezaruba/crankshaft/d
 psql -U $sqlUser -d $sqlDB -f CRANKSHAFT.sql
 
 rm CRANKSHAFT.sql
+
+echo "Installation complete!"
