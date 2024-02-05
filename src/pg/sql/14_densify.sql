@@ -12,7 +12,7 @@
 -- Returns: TABLE(geomout geometry, colout numeric)
 --
 --
-CREATE OR REPLACE FUNCTION CDB_Densify(
+CREATE OR REPLACE FUNCTION crankshaft.Densify(
     IN geomin geometry[],
     IN colin numeric[],
     IN iterations integer
@@ -65,3 +65,8 @@ BEGIN
     RETURN QUERY SELECT unnest(geotemp ) as geomout, unnest(coltemp ) as colout;
 END;
 $$ language plpgsql IMMUTABLE PARALLEL SAFE;
+
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+

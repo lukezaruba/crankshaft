@@ -7,7 +7,7 @@ class MockCursor:
         self.data = data
 
     def fetch(self, batch_size):
-        batch = self.data[self.cursor_pos:self.cursor_pos + batch_size]
+        batch = self.data[self.cursor_pos : self.cursor_pos + batch_size]
         self.cursor_pos += batch_size
         return batch
 

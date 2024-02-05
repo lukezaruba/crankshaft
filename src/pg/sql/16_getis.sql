@@ -1,7 +1,7 @@
 -- Getis-Ord's G
 -- Hotspot/Coldspot Analysis tool
 CREATE OR REPLACE FUNCTION
-  CDB_GetisOrdsG(
+  crankshaft.GetisOrdsG(
       subquery TEXT,
       column_name TEXT,
       w_type TEXT DEFAULT 'knn',
@@ -11,9 +11,16 @@ CREATE OR REPLACE FUNCTION
       id_col TEXT DEFAULT 'cartodb_id')
 RETURNS TABLE (z_score NUMERIC, p_value NUMERIC, p_z_sim NUMERIC, rowid BIGINT)
 AS $$
+  from sys import path
+  path.append('@ENV')
   from crankshaft.clustering import Getis
   getis = Getis()
   return getis.getis_ord(subquery, column_name, w_type, num_ngbrs, permutations, geom_col, id_col)
 $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 -- TODO: make a version that accepts the values as arrays
+
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------
+

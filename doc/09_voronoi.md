@@ -4,23 +4,21 @@ Function to construct the [Voronoi Diagram](https://en.wikipedia.org/wiki/Vorono
 
 PostGIS wil include this in future versions ([doc for dev branch](http://postgis.net/docs/manual-dev/ST_Voronoi.html)) and will perform faster for sure, but in the meantime...
 
-
-### CDB_Voronoi (geom geometry[], buffer numeric DEFAULT 0.5, tolerance numeric DEFAULT 1e-9)
+### Voronoi (geom geometry[], buffer numeric DEFAULT 0.5, tolerance numeric DEFAULT 1e-9)
 
 #### Arguments
 
-| Name | Type | Description |
-|------|------|-------------|
-| geom   | geometry[]  | Array of points's geometries |
-| buffer | numeric   | enlargment ratio for the envelope area used for the restraints|
-| tolerance   | numeric |  Delaunay tolerance, optional |
+| Name      | Type       | Description                                                    |
+| --------- | ---------- | -------------------------------------------------------------- |
+| geom      | geometry[] | Array of points's geometries                                   |
+| buffer    | numeric    | enlargment ratio for the envelope area used for the restraints |
+| tolerance | numeric    | Delaunay tolerance, optional                                   |
 
 ### Returns
 
-| Column Name | Type | Description |
-|-------------|------|-------------|
-| geom  | geometry collection | Collection of polygons of the Voronoi cells|
-
+| Column Name | Type                | Description                                 |
+| ----------- | ------------------- | ------------------------------------------- |
+| geom        | geometry collection | Collection of polygons of the Voronoi cells |
 
 #### Example Usage
 
@@ -40,7 +38,7 @@ WITH a AS (
 )
 SELECT
     ST_TRANSFORM(
-        (ST_Dump(cdb_crankshaft.CDB_Voronoi(geomin, 0.2, 1e-9))).geom,
+        (ST_Dump(crankshaft.Voronoi(geomin, 0.2, 1e-9))).geom,
         3857) as the_geom_webmercator
 FROM a;
 ```

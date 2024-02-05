@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION CDB_Contour(
+CREATE OR REPLACE FUNCTION crankshaft.Contour(
     IN geomin geometry[],
     IN colin numeric[],
     IN buffer numeric,
@@ -36,7 +36,7 @@ BEGIN
         ELSE 10000
     END INTO cell_count;
 
-    -- we don't have iterative barycentric interpolation in CDB_interpolation,
+    -- we don't have iterative barycentric interpolation in interpolation,
     --    and it's a costy function, so let's make a custom one here till
     --    we update the code
     -- tin := ARRAY[]::geometry[];
@@ -71,8 +71,8 @@ BEGIN
         SELECT
             CASE WHEN resolution <= 0  THEN
                 round(|/ (
-                 ST_area(geom) / abs(cell_count)
-             ))
+                ST_area(geom) / abs(cell_count)
+            ))
             ELSE
                 resolution
             END AS cell
@@ -80,28 +80,28 @@ BEGIN
     ),
     grid as(
         SELECT
-            ST_Transform(cdb_crankshaft.CDB_RectangleGrid(e.geom, r.cell, r.cell), 4326) as geom
+            ST_Transform(crankshaft.RectangleGrid(e.geom, r.cell, r.cell), 4326) as geom
         FROM envelope3857 e, resolution r
     ),
     interp as(
         SELECT
             geom,
             CASE
-                WHEN intmethod=1 THEN cdb_crankshaft._interp_in_tin(geomin, colin, tin, ST_Centroid(geom))
-                ELSE cdb_crankshaft.CDB_SpatialInterpolation(geomin, colin, ST_Centroid(geom), intmethod)
+                WHEN intmethod=1 THEN crankshaft._interp_in_tin(geomin, colin, tin, ST_Centroid(geom))
+                ELSE crankshaft.SpatialInterpolation(geomin, colin, ST_Centroid(geom), intmethod)
             END as val
         FROM grid
     ),
     classes as(
         SELECT CASE
             WHEN classmethod = 0 THEN
-                cdb_crankshaft.CDB_EqualIntervalBins(array_agg(val), steps)
+                crankshaft.EqualIntervalBins(array_agg(val), steps)
             WHEN classmethod = 1 THEN
-                cdb_crankshaft.CDB_HeadsTailsBins(array_agg(val), steps)
+                crankshaft.HeadsTailsBins(array_agg(val), steps)
             WHEN classmethod = 2 THEN
-                cdb_crankshaft.CDB_JenksBins(array_agg(val), steps)
+                crankshaft.JenksBins(array_agg(val), steps)
             ELSE
-                cdb_crankshaft.CDB_QuantileBins(array_agg(val), steps)
+                crankshaft.QuantileBins(array_agg(val), steps)
             END as b
         FROM interp
         where val is not null
@@ -145,7 +145,7 @@ $$ language plpgsql VOLATILE PARALLEL RESTRICTED;
 -- =====================================================================
 -- Interp in grid, so we can use barycentric with a precalculated tin (NNI)
 -- =====================================================================
-CREATE OR REPLACE FUNCTION _interp_in_tin(
+CREATE OR REPLACE FUNCTION crankshaft._interp_in_tin(
     IN geomin geometry[],
     IN colin numeric[],
     IN tin geometry[],
@@ -205,3 +205,7 @@ BEGIN
 END;
 $$
 language plpgsql IMMUTABLE PARALLEL SAFE;
+
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------

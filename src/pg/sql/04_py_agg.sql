@@ -1,5 +1,5 @@
 CREATE OR REPLACE FUNCTION
-    CDB_PyAggS(current_state Numeric[], current_row Numeric[]) 
+    crankshaft.PyAggS(current_state Numeric[], current_row Numeric[])
     returns NUMERIC[] as $$
     BEGIN
         if array_upper(current_state,1) is null  then
@@ -12,8 +12,8 @@ CREATE OR REPLACE FUNCTION
 
 -- Create aggregate if it did not exist
 DO $$ BEGIN
-    CREATE AGGREGATE CDB_PyAgg(NUMERIC[]) (
-        SFUNC = CDB_PyAggS,
+    CREATE AGGREGATE crankshaft.PyAgg(NUMERIC[]) (
+        SFUNC = crankshaft.PyAggS,
         STYPE = Numeric[],
         PARALLEL = SAFE,
         INITCOND = "{}"
@@ -21,3 +21,7 @@ DO $$ BEGIN
 EXCEPTION
     WHEN duplicate_function THEN NULL;
 END $$;
+
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------

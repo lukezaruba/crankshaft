@@ -10,7 +10,7 @@
 -- misses per point the funciton accepts before giving up.
 --
 -- Returns: Multipoint with the requested points
-CREATE OR REPLACE FUNCTION cdb_dot_density(geom geometry , no_points Integer, max_iter_per_point Integer DEFAULT 1000)
+CREATE OR REPLACE FUNCTION crankshaft.DotDensity(geom geometry , no_points Integer, max_iter_per_point Integer DEFAULT 1000)
 RETURNS GEOMETRY AS $$
 DECLARE
   extent GEOMETRY;
@@ -44,7 +44,7 @@ BEGIN
       ST_SetSRID(ST_MakePoint(yp, x0+width),4326)
     );
     intersection_line = ST_Intersection(bbox_line,geom);
-  	test_point = ST_LineInterpolatePoint(st_makeline(st_linemerge(intersection_line)),random());
+    test_point = ST_LineInterpolatePoint(st_makeline(st_linemerge(intersection_line)),random());
 	  points := points || test_point;
 	  no_left = no_left - 1 ;
   END LOOP;
@@ -52,3 +52,7 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql VOLATILE PARALLEL RESTRICTED;
+
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------

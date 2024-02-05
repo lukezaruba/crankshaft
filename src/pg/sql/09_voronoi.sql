@@ -1,9 +1,9 @@
 -- =============================================================================================
 --
--- CDB_Voronoi
+-- Voronoi
 --
 -- =============================================================================================
-CREATE OR REPLACE FUNCTION CDB_voronoi(
+CREATE OR REPLACE FUNCTION crankshaft.Voronoi(
     IN geomin geometry[],
     IN buffer numeric DEFAULT 0.5,
     IN tolerance numeric DEFAULT 1e-9
@@ -85,7 +85,7 @@ BEGIN
             ST_MakeLine(n.p1,n.p2) ,
             ST_MakeLine(n.p2,n.p3) ,
             ST_MakeLine(n.p3,n.p1)]) as Edge,
-            ST_Force2D(cdb_crankshaft._Find_Circle(n.p1,n.p2,n.p3)) as ct,
+            ST_Force2D(crankshaft._Find_Circle(n.p1,n.p2,n.p3)) as ct,
             CASE WHEN st_distance(p.ct, ST_ExteriorRing(p.pg)) < tolerance THEN
                 TRUE
             ELSE  FALSE END AS ctx,
@@ -185,49 +185,52 @@ $$ language plpgsql IMMUTABLE PARALLEL SAFE;
   * @copyright  : Simon Greener @ 2012
   *               Licensed under a Creative Commons Attribution-Share Alike 2.5 Australia License. (http://creativecommons.org/licenses/by-sa/2.5/au/)
 **/
-CREATE OR REPLACE FUNCTION _Find_Circle(
+CREATE OR REPLACE FUNCTION crankshaft._Find_Circle(
     IN p_pt1 geometry,
     IN p_pt2 geometry,
     IN p_pt3 geometry)
-  RETURNS geometry AS
+RETURNS geometry AS
 $BODY$
 DECLARE
-   v_Centre geometry;
-   v_radius NUMERIC;
-   v_CX     NUMERIC;
-   v_CY     NUMERIC;
-   v_dA     NUMERIC;
-   v_dB     NUMERIC;
-   v_dC     NUMERIC;
-   v_dD     NUMERIC;
-   v_dE     NUMERIC;
-   v_dF     NUMERIC;
-   v_dG     NUMERIC;
+    v_Centre geometry;
+    v_radius NUMERIC;
+    v_CX     NUMERIC;
+    v_CY     NUMERIC;
+    v_dA     NUMERIC;
+    v_dB     NUMERIC;
+    v_dC     NUMERIC;
+    v_dD     NUMERIC;
+    v_dE     NUMERIC;
+    v_dF     NUMERIC;
+    v_dG     NUMERIC;
 BEGIN
-   IF ( ST_GeometryType(p_pt1) <> 'ST_Point' OR
+    IF ( ST_GeometryType(p_pt1) <> 'ST_Point' OR
         ST_GeometryType(p_pt2) <> 'ST_Point' OR
         ST_GeometryType(p_pt3) <> 'ST_Point' ) THEN
-      RAISE EXCEPTION 'All supplied geometries must be points.';
-      RETURN NULL;
-   END IF;
-   v_dA := ST_X(p_pt2) - ST_X(p_pt1);
-   v_dB := ST_Y(p_pt2) - ST_Y(p_pt1);
-   v_dC := ST_X(p_pt3) - ST_X(p_pt1);
-   v_dD := ST_Y(p_pt3) - ST_Y(p_pt1);
-   v_dE := v_dA * (ST_X(p_pt1) + ST_X(p_pt2)) + v_dB * (ST_Y(p_pt1) + ST_Y(p_pt2));
-   v_dF := v_dC * (ST_X(p_pt1) + ST_X(p_pt3)) + v_dD * (ST_Y(p_pt1) + ST_Y(p_pt3));
-   v_dG := 2.0  * (v_dA * (ST_Y(p_pt3) - ST_Y(p_pt2)) - v_dB * (ST_X(p_pt3) - ST_X(p_pt2)));
-   -- If v_dG is zero then the three points are collinear and no finite-radius
-   -- circle through them exists.
-   IF ( v_dG = 0 ) THEN
-      RETURN NULL;
-   ELSE
-      v_CX := (v_dD * v_dE - v_dB * v_dF) / v_dG;
-      v_CY := (v_dA * v_dF - v_dC * v_dE) / v_dG;
-      v_Radius := SQRT(POWER(ST_X(p_pt1) - v_CX,2) + POWER(ST_Y(p_pt1) - v_CY,2) );
-   END IF;
-   RETURN ST_SetSRID(ST_MakePoint(v_CX, v_CY, v_radius),ST_Srid(p_pt1));
+    RAISE EXCEPTION 'All supplied geometries must be points.';
+    RETURN NULL;
+    END IF;
+    v_dA := ST_X(p_pt2) - ST_X(p_pt1);
+    v_dB := ST_Y(p_pt2) - ST_Y(p_pt1);
+    v_dC := ST_X(p_pt3) - ST_X(p_pt1);
+    v_dD := ST_Y(p_pt3) - ST_Y(p_pt1);
+    v_dE := v_dA * (ST_X(p_pt1) + ST_X(p_pt2)) + v_dB * (ST_Y(p_pt1) + ST_Y(p_pt2));
+    v_dF := v_dC * (ST_X(p_pt1) + ST_X(p_pt3)) + v_dD * (ST_Y(p_pt1) + ST_Y(p_pt3));
+    v_dG := 2.0  * (v_dA * (ST_Y(p_pt3) - ST_Y(p_pt2)) - v_dB * (ST_X(p_pt3) - ST_X(p_pt2)));
+    -- If v_dG is zero then the three points are collinear and no finite-radius
+    -- circle through them exists.
+    IF ( v_dG = 0 ) THEN
+        RETURN NULL;
+    ELSE
+        v_CX := (v_dD * v_dE - v_dB * v_dF) / v_dG;
+        v_CY := (v_dA * v_dF - v_dC * v_dE) / v_dG;
+        v_Radius := SQRT(POWER(ST_X(p_pt1) - v_CX,2) + POWER(ST_Y(p_pt1) - v_CY,2) );
+    END IF;
+    RETURN ST_SetSRID(ST_MakePoint(v_CX, v_CY, v_radius),ST_Srid(p_pt1));
 END;
 $BODY$
-  LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE;
+LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE;
 
+-------------------------------------------------
+-------------------------------------------------
+-------------------------------------------------

@@ -16,7 +16,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: markov_usjoin_example; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+-- Name: markov_usjoin_example; Type: TABLE; Schema: public; Owner: postgres; Tablespace:
 --
 
 CREATE TABLE markov_usjoin_example (
@@ -167,7 +167,7 @@ COPY markov_usjoin_example (cartodb_id, the_geom, name, state_fips, y1929, y1930
 
 
 --
--- Name: markov_usjoin_example_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+-- Name: markov_usjoin_example_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace:
 --
 
 ALTER TABLE ONLY markov_usjoin_example

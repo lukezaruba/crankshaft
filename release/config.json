@@ -1,0 +1,7 @@
+{
+  "pgPython": "/Library/edb/languagepack/v3/Python-3.10",
+  "envName": "crankshaft_env",
+  "envLoc": "/Library/edb/languagepack/v3/Python-3.10",
+  "sqlUser": "postgres",
+  "sqlDB": "mnaccidents"
+}

@@ -1,15 +1,14 @@
-import unittest
-import numpy as np
-
-
-from helper import fixture_file
-from crankshaft.clustering import Kmeans
-from crankshaft.analysis_data_provider import AnalysisDataProvider
-import crankshaft.clustering as cc
-from crankshaft import random_seeds
-
 import json
+import unittest
 from collections import OrderedDict
+
+import crankshaft.clustering as cc
+import numpy as np
+from crankshaft.analysis_data_provider import AnalysisDataProvider
+from crankshaft.clustering import Kmeans
+from helper import fixture_file
+
+from crankshaft import random_seeds
 
 
 class FakeDataProvider(AnalysisDataProvider):
@@ -27,21 +26,18 @@ class KMeansTest(unittest.TestCase):
     """Testing class for k-means spatial"""
 
     def setUp(self):
-        self.cluster_data = json.loads(
-          open(fixture_file('kmeans.json')).read())
-        self.params = {"subquery": "select * from table",
-                       "no_clusters": "10"}
+        self.cluster_data = json.loads(open(fixture_file("kmeans.json")).read())
+        self.params = {"subquery": "select * from table", "no_clusters": "10"}
 
     def test_kmeans(self):
-        """
-        """
-        data = [{'xs': d['xs'],
-                 'ys': d['ys'],
-                 'ids': d['ids']} for d in self.cluster_data]
+        """ """
+        data = [
+            {"xs": d["xs"], "ys": d["ys"], "ids": d["ids"]} for d in self.cluster_data
+        ]
 
         random_seeds.set_random_seeds(1234)
         kmeans = Kmeans(FakeDataProvider(data))
-        clusters = kmeans.spatial('subquery', 2)
+        clusters = kmeans.spatial("subquery", 2)
         labels = [a[1] for a in clusters]
         c1 = [a for a in clusters if a[1] == 0]
         c2 = [a for a in clusters if a[1] == 1]
@@ -55,22 +51,27 @@ class KMeansNonspatialTest(unittest.TestCase):
     """Testing class for k-means non-spatial"""
 
     def setUp(self):
-        self.params = {"subquery": "SELECT * FROM TABLE",
-                       "n_clusters": 5}
+        self.params = {"subquery": "SELECT * FROM TABLE", "n_clusters": 5}
 
     def test_kmeans_nonspatial(self):
         """
-            test for k-means non-spatial
+        test for k-means non-spatial
         """
         # data from:
         # http://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html#sklearn-cluster-kmeans
-        data_raw = [OrderedDict([("arr_col1", [1, 1, 1, 4, 4, 4]),
-                                 ("arr_col2", [2, 4, 0, 2, 4, 0]),
-                                 ("rowid", [1, 2, 3, 4, 5, 6])])]
+        data_raw = [
+            OrderedDict(
+                [
+                    ("arr_col1", [1, 1, 1, 4, 4, 4]),
+                    ("arr_col2", [2, 4, 0, 2, 4, 0]),
+                    ("rowid", [1, 2, 3, 4, 5, 6]),
+                ]
+            )
+        ]
 
         random_seeds.set_random_seeds(1234)
         kmeans = Kmeans(FakeDataProvider(data_raw))
-        clusters = kmeans.nonspatial('subquery', ['col1', 'col2'], 2)
+        clusters = kmeans.nonspatial("subquery", ["col1", "col2"], 2)
 
         cl1 = clusters[0][0]
         cl2 = clusters[3][0]
@@ -84,4 +85,4 @@ class KMeansNonspatialTest(unittest.TestCase):
         # raises exception for no data
         with self.assertRaises(Exception):
             kmeans = Kmeans(FakeDataProvider([]))
-            kmeans.nonspatial('subquery', ['col1', 'col2'], 2)
+            kmeans.nonspatial("subquery", ["col1", "col2"], 2)

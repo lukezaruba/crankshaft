@@ -1,13 +1,13 @@
+import json
 import unittest
-import numpy as np
 
+import crankshaft.pysal_utils as pu
+import numpy as np
+from crankshaft.analysis_data_provider import AnalysisDataProvider
+from crankshaft.clustering import Getis
 from helper import fixture_file
 
-from crankshaft.clustering import Getis
-import crankshaft.pysal_utils as pu
 from crankshaft import random_seeds
-import json
-from crankshaft.analysis_data_provider import AnalysisDataProvider
 
 # Fixture files produced as follows
 #
@@ -47,32 +47,33 @@ class FakeDataProvider(AnalysisDataProvider):
 
 class GetisTest(unittest.TestCase):
     """Testing class for Getis-Ord's G* funtion
-       This test replicates the work done in PySAL documentation:
-          https://pysal.readthedocs.io/en/v1.11.0/users/tutorials/autocorrelation.html#local-g-and-g
+    This test replicates the work done in PySAL documentation:
+    https://pysal.readthedocs.io/en/v1.11.0/users/tutorials/autocorrelation.html#local-g-and-g
     """
 
     def setUp(self):
         # load raw data for analysis
         self.neighbors_data = json.loads(
-          open(fixture_file('neighbors_getis.json')).read())
+            open(fixture_file("neighbors_getis.json")).read()
+        )
 
         # load pre-computed/known values
-        self.getis_data = json.loads(
-          open(fixture_file('getis.json')).read())
+        self.getis_data = json.loads(open(fixture_file("getis.json")).read())
 
     def test_getis_ord(self):
         """Test Getis-Ord's G*"""
-        data = [{'id': d['id'],
-                 'attr1': d['value'],
-                 'neighbors': d['neighbors']} for d in self.neighbors_data]
+        data = [
+            {"id": d["id"], "attr1": d["value"], "neighbors": d["neighbors"]}
+            for d in self.neighbors_data
+        ]
 
         random_seeds.set_random_seeds(1234)
         getis = Getis(FakeDataProvider(data))
 
-        result = getis.getis_ord('subquery', 'value',
-                                 'queen', None, 999, 'the_geom',
-                                 'cartodb_id')
+        result = getis.getis_ord(
+            "subquery", "value", "queen", None, 999, "the_geom", "cartodb_id"
+        )
         result = [(row[0], row[1]) for row in result]
         expected = np.array(self.getis_data)[:, 0:2]
-        for ([res_z, res_p], [exp_z, exp_p]) in zip(result, expected):
+        for [res_z, res_p], [exp_z, exp_p] in zip(result, expected):
             self.assertAlmostEqual(res_z, exp_z, delta=1e-2)

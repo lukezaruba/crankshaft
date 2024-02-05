@@ -1,15 +1,15 @@
 
 CREATE OR REPLACE FUNCTION
-  CDB_CreateAndPredictSegment(
-    target NUMERIC[],
-    features NUMERIC[],
-    target_features NUMERIC[],
-    target_ids NUMERIC[],
-    n_estimators INTEGER DEFAULT 1200,
-    max_depth INTEGER DEFAULT 3,
-    subsample DOUBLE PRECISION DEFAULT 0.5,
-    learning_rate DOUBLE PRECISION DEFAULT 0.01,
-    min_samples_leaf INTEGER DEFAULT 1)
+    CreateAndPredictSegment(
+        target NUMERIC[],
+        features NUMERIC[],
+        target_features NUMERIC[],
+        target_ids NUMERIC[],
+        n_estimators INTEGER DEFAULT 1200,
+        max_depth INTEGER DEFAULT 3,
+        subsample DOUBLE PRECISION DEFAULT 0.5,
+        learning_rate DOUBLE PRECISION DEFAULT 0.01,
+        min_samples_leaf INTEGER DEFAULT 1)
 RETURNS TABLE(cartodb_id NUMERIC, prediction NUMERIC, accuracy NUMERIC)
 AS $$
     import numpy as np
@@ -38,15 +38,15 @@ AS $$
 $$ LANGUAGE plpython3u VOLATILE PARALLEL RESTRICTED;
 
 CREATE OR REPLACE FUNCTION
-  CDB_CreateAndPredictSegment(
-      query TEXT,
-      variable_name TEXT,
-      target_table TEXT,
-      n_estimators INTEGER DEFAULT 1200,
-      max_depth INTEGER DEFAULT 3,
-      subsample DOUBLE PRECISION DEFAULT 0.5,
-      learning_rate DOUBLE PRECISION DEFAULT 0.01,
-      min_samples_leaf INTEGER DEFAULT 1)
+    CreateAndPredictSegment(
+        query TEXT,
+        variable_name TEXT,
+        target_table TEXT,
+        n_estimators INTEGER DEFAULT 1200,
+        max_depth INTEGER DEFAULT 3,
+        subsample DOUBLE PRECISION DEFAULT 0.5,
+        learning_rate DOUBLE PRECISION DEFAULT 0.01,
+        min_samples_leaf INTEGER DEFAULT 1)
 RETURNS TABLE (cartodb_id TEXT, prediction NUMERIC, accuracy NUMERIC)
 AS $$
     from crankshaft.segmentation import Segmentation
@@ -71,16 +71,16 @@ AS $$
 $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
 
 CREATE OR REPLACE FUNCTION
-  CDB_CreateAndPredictSegment(
-      query TEXT,
-      variable TEXT,
-      feature_columns TEXT[],
-      target_query TEXT,
-      n_estimators INTEGER DEFAULT 1200,
-      max_depth INTEGER DEFAULT 3,
-      subsample DOUBLE PRECISION DEFAULT 0.5,
-      learning_rate DOUBLE PRECISION DEFAULT 0.01,
-      min_samples_leaf INTEGER DEFAULT 1)
+    CreateAndPredictSegment(
+        query TEXT,
+        variable TEXT,
+        feature_columns TEXT[],
+        target_query TEXT,
+        n_estimators INTEGER DEFAULT 1200,
+        max_depth INTEGER DEFAULT 3,
+        subsample DOUBLE PRECISION DEFAULT 0.5,
+        learning_rate DOUBLE PRECISION DEFAULT 0.01,
+        min_samples_leaf INTEGER DEFAULT 1)
 RETURNS TABLE (cartodb_id TEXT, prediction NUMERIC, accuracy NUMERIC)
 AS $$
     from crankshaft.segmentation import Segmentation
