@@ -26,7 +26,10 @@ deactivate
 cd $wd
 
 # Install Functions with psql
-curl -o CRANKSHAFT.sql https://raw.githubusercontent.com/lukezaruba/crankshaft/main/release/crankshaft--0.10.0.sql
+curl -o CRANKSHAFT.sql https://raw.githubusercontent.com/lukezaruba/crankshaft/main/release/crankshaft.sql
+
+sed -i '' 's/@VERSION/0.10.0/g' CRANKSHAFT.sql
+sed -i '' "s|@ENV|$envPython|g" CRANKSHAFT.sql
 
 psql -U $sqlUser -d $sqlDB -f CRANKSHAFT.sql
 

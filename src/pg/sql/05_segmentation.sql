@@ -12,6 +12,9 @@ CREATE OR REPLACE FUNCTION
         min_samples_leaf INTEGER DEFAULT 1)
 RETURNS TABLE(cartodb_id NUMERIC, prediction NUMERIC, accuracy NUMERIC)
 AS $$
+    from sys import path
+    path.append('@ENV')
+
     import numpy as np
     import plpy
 
@@ -49,6 +52,8 @@ CREATE OR REPLACE FUNCTION
         min_samples_leaf INTEGER DEFAULT 1)
 RETURNS TABLE (cartodb_id TEXT, prediction NUMERIC, accuracy NUMERIC)
 AS $$
+    from sys import path
+    path.append('@ENV')
     from crankshaft.segmentation import Segmentation
     seg = Segmentation()
     model_params = {
@@ -83,6 +88,8 @@ CREATE OR REPLACE FUNCTION
         min_samples_leaf INTEGER DEFAULT 1)
 RETURNS TABLE (cartodb_id TEXT, prediction NUMERIC, accuracy NUMERIC)
 AS $$
+    from sys import path
+    path.append('@ENV')
     from crankshaft.segmentation import Segmentation
     seg = Segmentation()
     model_params = {
