@@ -8,7 +8,7 @@ CREATE SCHEMA IF NOT EXISTS crankshaft;
 
 CREATE OR REPLACE FUNCTION crankshaft.Version()
 RETURNS text AS $$
-  SELECT '0.10.0';
+  SELECT '@VERSION';
 $$ language 'sql' STABLE STRICT PARALLEL SAFE;
 
 -------------------------------------------------
@@ -21,7 +21,7 @@ CREATE OR REPLACE FUNCTION
 crankshaft._random_seeds (seed_value INTEGER) RETURNS VOID
 AS $$
   from sys import path
-  path.append('')
+  path.append('@ENV')
   from crankshaft import random_seeds
   random_seeds.set_random_seeds(seed_value)
 $$ LANGUAGE plpython3u VOLATILE PARALLEL UNSAFE;
@@ -70,6 +70,9 @@ CREATE OR REPLACE FUNCTION
         min_samples_leaf INTEGER DEFAULT 1)
 RETURNS TABLE(cartodb_id NUMERIC, prediction NUMERIC, accuracy NUMERIC)
 AS $$
+    from sys import path
+    path.append('@ENV')
+
     import numpy as np
     import plpy
 
@@ -107,6 +110,8 @@ CREATE OR REPLACE FUNCTION
         min_samples_leaf INTEGER DEFAULT 1)
 RETURNS TABLE (cartodb_id TEXT, prediction NUMERIC, accuracy NUMERIC)
 AS $$
+    from sys import path
+    path.append('@ENV')
     from crankshaft.segmentation import Segmentation
     seg = Segmentation()
     model_params = {
@@ -141,6 +146,8 @@ CREATE OR REPLACE FUNCTION
         min_samples_leaf INTEGER DEFAULT 1)
 RETURNS TABLE (cartodb_id TEXT, prediction NUMERIC, accuracy NUMERIC)
 AS $$
+    from sys import path
+    path.append('@ENV')
     from crankshaft.segmentation import Segmentation
     seg = Segmentation()
     model_params = {
@@ -674,7 +681,7 @@ CREATE OR REPLACE FUNCTION
 RETURNS TABLE (moran NUMERIC, significance NUMERIC)
 AS $$
   from sys import path
-  path.append('')
+  path.append('@ENV')
   from crankshaft.clustering import Moran
   # TODO: use named parameters or a dictionary
   moran = Moran()
@@ -700,7 +707,7 @@ RETURNS TABLE (
     vals NUMERIC)
 AS $$
   from sys import path
-  path.append('')
+  path.append('@ENV')
   from crankshaft.clustering import Moran
   moran = Moran()
   result = moran.local_stat(subquery, column_name, w_type,
@@ -730,7 +737,7 @@ RETURNS TABLE (
     rowid INT)
 AS $$
 from sys import path
-path.append('')
+path.append('@ENV')
 from crankshaft.clustering import Moran
 moran = Moran()
 return moran.local_stat(subquery, column_name, w_type,
@@ -859,7 +866,7 @@ CREATE OR REPLACE FUNCTION
 RETURNS TABLE (moran FLOAT, significance FLOAT)
 AS $$
   from sys import path
-  path.append('')
+  path.append('@ENV')
   from crankshaft.clustering import Moran
   moran = Moran()
   # TODO: use named parameters or a dictionary
@@ -888,7 +895,7 @@ TABLE(
     vals NUMERIC)
 AS $$
   from sys import path
-  path.append('')
+  path.append('@ENV')
   from crankshaft.clustering import Moran
   moran = Moran()
   # TODO: use named parameters or a dictionary
@@ -940,7 +947,7 @@ TABLE(
     rowid INT)
 AS $$
 from sys import path
-path.append('')
+path.append('@ENV')
 from crankshaft.clustering import Moran
 moran = Moran()
 return moran.local_rate_stat(
@@ -1066,7 +1073,7 @@ RETURNS TABLE(
   cluster_no INTEGER
 ) AS $$
 from sys import path
-path.append('')
+path.append('@ENV')
 from crankshaft.clustering import Kmeans
 kmeans = Kmeans()
 return kmeans.spatial(query, no_clusters, no_init)
@@ -1096,7 +1103,7 @@ RETURNS TABLE(
   rowid bigint
 ) AS $$
 from sys import path
-path.append('')
+path.append('@ENV')
 from crankshaft.clustering import Kmeans
 kmeans = Kmeans()
 return kmeans.nonspatial(query, colnames, no_clusters,
@@ -1295,7 +1302,7 @@ CREATE OR REPLACE FUNCTION
 RETURNS TABLE (z_score NUMERIC, p_value NUMERIC, p_z_sim NUMERIC, rowid BIGINT)
 AS $$
   from sys import path
-  path.append('')
+  path.append('@ENV')
   from crankshaft.clustering import Getis
   getis = Getis()
   return getis.getis_ord(subquery, column_name, w_type, num_ngbrs, permutations, geom_col, id_col)
